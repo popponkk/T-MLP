@@ -105,6 +105,7 @@ def write_dataset(output_dir: Path, splits, feature_names, label_name):
         "name": output_dir.name,
         "id": f"{output_dir.name.lower()}--custom",
         "task_type": "regression",
+        "normalization": "standard",
         "label_name": label_name,
         "n_num_features": len(feature_names),
         "num_feature_names": feature_names,

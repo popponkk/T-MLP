@@ -1,5 +1,6 @@
-# __pycache__/
+# others
 __pycache__/
+/results/
 
 # data
 /data/csvs/

@@ -84,8 +84,9 @@ class DataProcessor:
         assert model is not None or device is not None
         def get_spl(X: Optional[Union[ArrayDict, TensorDict]], spl):
             return None if X is None else X[spl]
-        if device is not None or isinstance(model.model, nn.Module):
-            device = device or model.model.device
+        if model is not None and hasattr(model, 'device') and model.device is not None:
+            device = model.device
+        if device is not None or (model is not None and isinstance(model.model, nn.Module)):
             X_num, X_cat, ys, ids = prepare_tensors(dataset, device)
             return {spl: (
                 get_spl(X_num, spl), 
