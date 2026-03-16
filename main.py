@@ -22,10 +22,15 @@ parser.add_argument('--d_token', type=int, default=1024)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--wd', type=float, default=0)
 parser.add_argument('--gpu', type=int, default=0)
+parser.add_argument('--device', type=str, choices=['auto', 'cpu', 'cuda'], default='auto')
 parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()
 
-if torch.cuda.is_available():
+if args.device == 'cpu':
+    device = torch.device('cpu')
+elif args.device == 'cuda':
+    device = torch.device(f'cuda:{args.gpu}')
+elif torch.cuda.is_available():
     device = torch.device(f'cuda:{args.gpu}')
 else:
     device = torch.device('cpu')
