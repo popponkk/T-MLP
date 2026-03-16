@@ -17,7 +17,7 @@ import optuna
 
 from models import MLP, tMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE
 from models.abstract import TabModel, check_dir
-from data.utils import Dataset
+from utils.data_utils import Dataset
 from data.processor import DataProcessor
 
 MODEL_CARDS = {
@@ -123,7 +123,7 @@ def make_baseline(
             feat_gate=feat_gate, pruning=pruning, dataset=dataset)
     return MODEL_CARDS[model_name](
         model_config=model_config, 
-        n_num_features=n_num, categories=cat_card, n_labels=n_labels)
+        n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device)
 
 def make_optimizer_scheduler(
     model: nn.Module,
@@ -184,7 +184,8 @@ def tune(
     # meta args
     if output_dir is None:
         now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        output_dir = f"results/{model_name}-{dataset.name}-{now}"
+        dataset_name = getattr(dataset, 'name', 'dataset')
+        output_dir = f"results/{model_name}-{dataset_name}-{now}"
     search_spaces['meta'] = {'save_path': Path(output_dir) / 'tunning'} # save tuning results
     tuned_dir = Path(output_dir) / 'tuned'
     # global variable
@@ -236,7 +237,7 @@ def tune(
         # current tuning infos
         tunning_infos = {
             'model_name': model_name,
-            'dataset': dataset.name,
+            'dataset': getattr(dataset, 'name', 'dataset'),
             'cur_trail': trail.number,
             'best_trial': study.best_trial.number,
             'best_val_metric': study.best_value,

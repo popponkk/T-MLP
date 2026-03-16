@@ -154,8 +154,12 @@ class Dataset:
         else:
             return 1
 
-    def get_category_sizes(self, part: str) -> List[int]:
-        return [] if self.X_cat is None else get_category_sizes(self.X_cat[part])
+    def get_category_sizes(self, part: Optional[str] = None) -> List[int]:
+        if self.X_cat is None:
+            return []
+        if part is None:
+            return get_category_sizes(np.concatenate(list(self.X_cat.values()), axis=0))
+        return get_category_sizes(self.X_cat[part])
 
 
 def num_process_nans(dataset: Dataset, policy: Optional[NumNanPolicy]) -> Dataset:

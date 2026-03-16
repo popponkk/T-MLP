@@ -62,7 +62,21 @@ DATASETS = {
 CUSTOM_DATASETS = {}
 
 def read_custom_infos():
-    with open(CUSTOM_DATA / 'infos.json', 'r') as f:
+    if not CUSTOM_DATA.exists():
+        CUSTOM_DATA.mkdir(parents=True, exist_ok=True)
+    infos_file = CUSTOM_DATA / 'infos.json'
+    if not infos_file.exists():
+        custom_infos = {
+            'n_datasets': 0,
+            'binclass': 0,
+            'multiclass': 0,
+            'regression': 0,
+            'data_list': [],
+        }
+        with open(infos_file, 'w') as f:
+            json.dump(custom_infos, f, indent=4)
+        return custom_infos
+    with open(infos_file, 'r') as f:
         custom_infos = json.load(f)
     return custom_infos
 # read the `infos.json` to load

@@ -1,6 +1,7 @@
 import os
 import random
 import argparse
+import inspect
 import numpy as np
 
 import torch
@@ -24,7 +25,10 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()
 
-device = torch.device(f'cuda:{args.gpu}')
+if torch.cuda.is_available():
+    device = torch.device(f'cuda:{args.gpu}')
+else:
+    device = torch.device('cpu')
 seed_everything(args.seed)
 
 if args.model == 'tmlp' and any([args.feat_gate, args.pruning]):
@@ -102,7 +106,7 @@ print(
 # dataset args
 n_num_features = dataset.n_num_features
 categories = dataset.get_category_sizes('train')
-categories_all = dataset.get_category_sizes(None)
+categories_all = dataset.get_category_sizes()
 if len(categories) == 0:
     categories = None
 else:
@@ -128,9 +132,19 @@ model = make_baseline(
 # convert data input to tensor
 datas = DataProcessor.prepare(dataset, model)
 
+def call_with_supported_kwargs(func, **kwargs):
+    signature = inspect.signature(func)
+    supported = {
+        key: value for key, value in kwargs.items()
+        if key in signature.parameters
+    }
+    return func(**supported)
+
 # training
-model.fit(
+call_with_supported_kwargs(
+    model.fit,
     X_num=datas['train'][0], X_cat=datas['train'][1], ys=datas['train'][2], ids=datas['train'][3],
+    y_std=y_std,
     eval_set=(datas['val'], datas['test']), # add test set to report metrics each best epoch
     patience=patience, task=dataset.task_type.value,
     training_args=configs['training'],
@@ -139,7 +153,8 @@ model.fit(
 model.load_best_dnn(output_dir)
 
 # prediction
-predictions, results = model.predict(
+predictions, results = call_with_supported_kwargs(
+    model.predict,
     X_num=datas['test'][0], X_cat=datas['test'][1], ys=datas['test'][2], y_std=y_std, ids=datas['test'][3],
     task=dataset.task_type.value,
     return_probs=True, return_metric=True, return_loss=True,

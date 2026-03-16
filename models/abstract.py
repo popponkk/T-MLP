@@ -113,6 +113,11 @@ class TabModel(ABC):
         self.post_init()
 
     def post_init(self):
+        device_name = (
+            torch.cuda.get_device_name(torch.cuda.current_device())
+            if torch.cuda.is_available()
+            else 'cpu'
+        )
         self.history = {
             'train': {'loss': [], 'tot_time': 0, 'avg_step_time': 0, 'avg_epoch_time': 0}, 
             'val': {
@@ -124,7 +129,7 @@ class TabModel(ABC):
                 'tot_time': 0, 'avg_step_time': 0, 'avg_epoch_time': 0
             }, 
             # 'test': {'loss': [], 'metric': [], 'final_metric': None},
-            'device': torch.cuda.get_device_name(),
+            'device': device_name,
         } # save metrics
         self.no_improvement = 0 # for dnn early stop
     
