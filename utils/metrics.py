@@ -20,6 +20,19 @@ def calculate_rmse(
     return rmse
 
 
+def calculate_mae(
+    y_true: np.ndarray, y_pred: np.ndarray, std: Optional[float]
+) -> float:
+    mae = skm.mean_absolute_error(y_true, y_pred)
+    if std is not None:
+        mae *= std
+    return mae
+
+
+def calculate_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return skm.r2_score(y_true, y_pred)
+
+
 def _get_labels_and_probs(
     y_pred: np.ndarray, task_type, prediction_type: Optional[PredictionType]
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -59,7 +72,9 @@ def calculate_metrics(
         assert prediction_type is None
         assert y_std is not None
         rmse = calculate_rmse(y_true, y_pred, y_std)
-        result = {'rmse': rmse}
+        mae = calculate_mae(y_true, y_pred, y_std)
+        r2 = calculate_r2(y_true, y_pred)
+        result = {'rmse': rmse, 'mae': mae, 'r2': r2}
     else:
         labels, probs = _get_labels_and_probs(y_pred, task_type, prediction_type)
         result = cast(

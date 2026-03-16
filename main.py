@@ -170,6 +170,7 @@ predictions, results = call_with_supported_kwargs(
     meta_args=configs['meta'],
 )
 model.save_prediction(output_dir, results)
+model.save_predictions_array(output_dir, predictions, file='test_predictions')
 
 print("=== Prediction (best metric) ===")
 print(results)
