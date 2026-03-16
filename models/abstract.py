@@ -188,6 +188,7 @@ class TabModel(ABC):
         if meta_args is None:
             meta_args = {}
         meta_args.setdefault('save_path', f'results/{self.base_name}')
+        meta_args.setdefault('log_every_n_epochs', 50)
         if not os.path.exists(meta_args['save_path']):
             print('create new results dir: ', meta_args['save_path'])
             os.makedirs(meta_args['save_path'])
@@ -393,6 +394,10 @@ class TabModel(ABC):
             # binclass with label smoothing
             elif task == 'binclass' and golds.max() != 1.0:
                 golds = (golds == golds.max()).astype(np.float32)
+            metrics = TabModel.calculate_metric_details(
+                golds, predictions,
+                task, prediction_type, y_std
+            )
             metric = TabModel.calculate_metric(
                 golds, predictions,
                 task, prediction_type, y_std
@@ -405,8 +410,8 @@ class TabModel(ABC):
                 else None
             )
         else:
-            metric, logloss = None, None
-        results = {'loss': loss, 'metric': metric, 'time': tot_time, 'log_loss': logloss}
+            metric, metrics, logloss = None, None, None
+        results = {'loss': loss, 'metric': metric, 'metrics': metrics, 'time': tot_time, 'log_loss': logloss}
         if meta_args is not None:
             self.save_prediction(meta_args['save_path'], results)
         return predictions, results
@@ -439,6 +444,11 @@ class TabModel(ABC):
         # save metrics
         with open(Path(output_dir) / 'results.json', 'w') as f:
             json.dump(self.history, f, indent=4)
+
+    def append_log(self, output_dir, message, file='train.log'):
+        check_dir(output_dir)
+        with open(Path(output_dir) / file, 'a', encoding='utf-8') as f:
+            f.write(message + '\n')
     
     def save_prediction(self, output_dir, results, file='prediction'):
         check_dir(output_dir)
@@ -448,11 +458,16 @@ class TabModel(ABC):
             'loss': results['loss'], 
             'metric_name': results['metric'][1], 
             'metric': results['metric'][0], 
+            'metrics': results.get('metrics'),
             'time': results['time'],
             'log_loss': results['log_loss'],
         }
         with open(Path(output_dir) / f'{file}.json', 'w') as f:
             json.dump(saved_results, f, indent=4)
+
+    def save_predictions_array(self, output_dir, predictions, file='predictions'):
+        check_dir(output_dir)
+        np.save(Path(output_dir) / f'{file}.npy', predictions)
     
     def save_config(self, output_dir):
         def serialize(config: dict):
@@ -592,6 +607,19 @@ class TabModel(ABC):
             golds, predictions,
             task, prediction_type, y_std
         )[metric], metric
+
+    @staticmethod
+    def calculate_metric_details(
+        golds,
+        predictions,
+        task: str,
+        prediction_type: Optional[str] = None,
+        y_std: Optional[float] = None,
+    ):
+        return calculate_metrics(
+            golds, predictions,
+            task, prediction_type, y_std
+        )
     
     def better_result(self, dev_metric, task, is_loss=False):
         if is_loss: # logloss
@@ -622,13 +650,14 @@ class TabModel(ABC):
                 return False
     
     def early_stop_handler(self, epoch, tot_step, dev_metric, task, patience, save_path, y_std, test_loader=None):
+        status_parts = []
         if task != 'regression' and self.better_result(dev_metric['log_loss'], task, is_loss=True):
             # record best logloss
             torch.save(self.model.state_dict(), Path(save_path) / 'best-logloss.bin')
             if self.sparser is not None:
                 torch.save(self.sparser.state_dict(), Path(save_path) / 'best-logloss-sparser.bin')
         if self.better_result(dev_metric['metric'], task):
-            print('<<< Best Dev Result', end='')
+            status_parts.append('<<< Best Dev Result')
             torch.save(self.model.state_dict(), Path(save_path) / 'best.bin')
             if self.sparser is not None:
                 torch.save(self.sparser.state_dict(), Path(save_path) / 'best-sparser.bin')
@@ -640,15 +669,15 @@ class TabModel(ABC):
             if test_loader is not None:
                 _, results = self.predict(dev_loader=test_loader, y_std=y_std, task=task, return_metric=True)
                 test_metric, metric_name = results['metric']
-                print(f" | test-[{metric_name}] {test_metric:.4g} ", end='')
+                status_parts.append(f"test-[{metric_name}] {test_metric:.4g}")
                 self.history['val']['test_metrics'].append(test_metric)                
         else:
             self.no_improvement += 1
-            print(f'| [no improvement] {self.no_improvement}', end='')
+            status_parts.append(f"[no improvement] {self.no_improvement}")
         if patience <= 0:
-            return False
+            return False, status_parts
         else:
-            return self.no_improvement >= patience
+            return self.no_improvement >= patience, status_parts
     
     def save_evaluate_dnn(
         self, 
@@ -664,17 +693,25 @@ class TabModel(ABC):
         """For DNN models"""
         epoch, step = tot_step // steps_per_epoch, (tot_step - 1) % steps_per_epoch + 1
         avg_loss = tot_loss / step
+        log_every_n_epochs = self.meta_config.get('log_every_n_epochs', 1) if self.meta_config else 1
+        should_print = epoch == 1 or epoch % log_every_n_epochs == 0
         self.history['train']['loss'].append(avg_loss)
         self.history['train']['tot_time'] = tot_time
         self.history['train']['avg_step_time'] = tot_time / tot_step
         self.history['train']['avg_epoch_time'] = self.history['train']['avg_step_time'] * steps_per_epoch
-        print(f"[epoch] {epoch} | [step] {step} | [tot_step] {tot_step} | [used time] {tot_time:.4g} | [train_loss] {avg_loss:.4g} ", end='')
+        log_parts = [
+            f"[epoch] {epoch}",
+            f"[step] {step}",
+            f"[tot_step] {tot_step}",
+            f"[used time] {tot_time:.4g}",
+            f"[train_loss] {avg_loss:.4g}",
+        ]
         if dev_loader is not None:
             _, results = self.predict(dev_loader=dev_loader, y_std=y_std, task=task, return_metric=True)
             dev_metric, metric_name = results['metric']
-            print(f"| [{metric_name}] {dev_metric:.4g} ", end='')
+            log_parts.append(f"[{metric_name}] {dev_metric:.4g}")
             if task != 'regression':
-                print(f"| [log-loss] {results['log_loss']:.4g} ", end='')
+                log_parts.append(f"[log-loss] {results['log_loss']:.4g}")
                 self.history['val']['log_loss'].append(results['log_loss'])
             self.history['val']['metric_name'] = metric_name
             self.history['val']['metric'].append(dev_metric)
@@ -682,10 +719,21 @@ class TabModel(ABC):
             self.history['val']['avg_step_time'] = self.history['val']['tot_time'] / tot_step
             self.history['val']['avg_epoch_time'] = self.history['val']['avg_step_time'] * steps_per_epoch
             dev_metric = {'metric': dev_metric, 'log_loss': results['log_loss']}
-            if self.early_stop_handler(epoch, tot_step, dev_metric, task, patience, save_path, y_std, test_loader):
-                print(' <<< Early Stop')
+            is_early_stop, status_parts = self.early_stop_handler(
+                epoch, tot_step, dev_metric, task, patience, save_path, y_std, test_loader
+            )
+            log_parts.extend(status_parts)
+            if is_early_stop:
+                log_parts.append('<<< Early Stop')
+                log_message = ' | '.join(log_parts)
+                self.append_log(save_path, log_message)
+                if should_print:
+                    print(log_message)
                 return True
-        print()
+        log_message = ' | '.join(log_parts)
+        self.append_log(save_path, log_message)
+        if should_print:
+            print(log_message)
         return False
     
     def load_best_dnn(self, save_path, file='best'):
