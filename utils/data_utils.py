@@ -340,8 +340,15 @@ def transform_dataset(
     # WARNING: the order of transformations matters. Moreover, the current
     # implementation is not ideal in that sense.
     if cache_dir is not None:
+        cache_files = []
+        for pattern in ['info.json', '*.npy']:
+            cache_files.extend(sorted(cache_dir.glob(pattern)))
+        data_signature = '|'.join(
+            f'{path.name}:{path.stat().st_size}:{path.stat().st_mtime_ns}'
+            for path in cache_files
+        )
         transformations_md5 = hashlib.md5(
-            str(transformations).encode('utf-8')
+            f'{transformations}|{data_signature}'.encode('utf-8')
         ).hexdigest()
         transformations_str = '__'.join(map(str, astuple(transformations)))
         cache_path = (
