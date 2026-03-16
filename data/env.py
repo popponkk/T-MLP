@@ -61,6 +61,27 @@ DATASETS = {
 
 CUSTOM_DATASETS = {}
 
+
+def _discover_builtin_datasets():
+    discovered = {}
+    if DATA.exists():
+        for item in DATA.iterdir():
+            if not item.is_dir():
+                continue
+            info_file = item / 'info.json'
+            if not info_file.exists():
+                continue
+            dataset_info = {'path': item}
+            try:
+                with open(info_file, 'r') as f:
+                    info = json.load(f)
+            except json.JSONDecodeError:
+                info = {}
+            if 'normalization' in info:
+                dataset_info['normalization'] = info['normalization']
+            discovered[item.name] = dataset_info
+    return discovered
+
 def read_custom_infos():
     if not CUSTOM_DATA.exists():
         CUSTOM_DATA.mkdir(parents=True, exist_ok=True)
@@ -125,4 +146,8 @@ def push_custom_datasets(
     print(f"push dataset: '{info['name']}' done")
 
 def available_datasets():
-    return sorted(list(DATASETS.keys()) + list(CUSTOM_DATASETS.keys()))
+    builtin = set(DATASETS.keys()) | set(_discover_builtin_datasets().keys())
+    return sorted(list(builtin) + list(CUSTOM_DATASETS.keys()))
+
+
+DATASETS.update(_discover_builtin_datasets())

@@ -1,0 +1,6 @@
+
+# data
+/data/__pycache__/
+/data/csvs/
+/data/custom_datasets/
+/data/datasets/
