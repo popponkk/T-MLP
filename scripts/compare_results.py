@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -22,6 +23,11 @@ def parse_args():
         default="rmse",
         choices=["rmse", "mae", "r2", "loss", "time", "model"],
         help="Metric used for sorting. Default: rmse",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional output file path. Supports .csv and .json.",
     )
     return parser.parse_args()
 
@@ -77,6 +83,22 @@ def print_table(rows):
         print("  ".join(format_value(row[header]).ljust(widths[header]) for header in headers))
 
 
+def save_rows(rows, output_path: Path):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.suffix.lower() == ".json":
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(rows, f, indent=2)
+        return
+    if output_path.suffix.lower() == ".csv":
+        headers = ["model", "rmse", "mae", "r2", "loss", "time"]
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(rows)
+        return
+    raise ValueError("Unsupported output format. Use .csv or .json")
+
+
 def main():
     args = parse_args()
     results_dir = Path(args.results_dir)
@@ -97,6 +119,9 @@ def main():
 
     rows = sort_rows(rows, args.sort_by)
     print_table(rows)
+    if args.output is not None:
+        save_rows(rows, Path(args.output))
+        print(f"\nSaved comparison to: {args.output}")
 
 
 if __name__ == "__main__":
