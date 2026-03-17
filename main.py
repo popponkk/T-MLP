@@ -55,18 +55,20 @@ user_defined = False
 if args.model != 'tmlp' or user_defined:
     config_file = f'configs/default/{args.model}.yaml'
     configs = load_config_from_file(config_file)
+    configs.setdefault('training', configs.get('fit', {}))
     # uniform model & training args
-    if 'd_ffn_factor' in configs['model']:
-        configs['model']['d_ffn_factor'] = 0.66
-    if 'residual_dropout' in configs['model']:
-        configs['model']['residual_dropout'] = 0.1
-    configs['training']['lr'] = args.lr # 1e-4
-    configs['training']['weight_decay'] = args.wd # 0
-    # search spaces (can be set)
-    if 'n_layers' in configs['model']:
-        configs['model']['n_layers'] = args.n_layers
-    if 'd_token' in configs['model']:
-        configs['model']['d_token'] = args.d_token
+    if args.model not in ['xgboost', 'catboost', 'lightgbm']:
+        if 'd_ffn_factor' in configs['model']:
+            configs['model']['d_ffn_factor'] = 0.66
+        if 'residual_dropout' in configs['model']:
+            configs['model']['residual_dropout'] = 0.1
+        configs['training']['lr'] = args.lr # 1e-4
+        configs['training']['weight_decay'] = args.wd # 0
+        # search spaces (can be set)
+        if 'n_layers' in configs['model']:
+            configs['model']['n_layers'] = args.n_layers
+        if 'd_token' in configs['model']:
+            configs['model']['d_token'] = args.d_token
 else:
     print('adaptively set T-MLP model config')
     config_file = 'configs/default/tmlp-deep.yaml' \

@@ -1,0 +1,9 @@
+model:
+  iterations: 500
+  learning_rate: 0.05
+  depth: 6
+  loss_function: "RMSE"
+  verbose: false
+training:
+  use_best_model: true
+  verbose: false

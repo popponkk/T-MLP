@@ -5,3 +5,4 @@ from .autoint import AutoInt
 from .dcnv2 import DCNv2
 from .node_model import NODE
 from .tmlp import tMLP
+from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel

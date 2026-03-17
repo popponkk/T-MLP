@@ -15,13 +15,16 @@ import torch
 import torch.nn as nn
 import optuna
 
-from models import MLP, tMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE
+from models import (
+    MLP, tMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
+    XGBoostModel, CatBoostModel, LightGBMModel,
+)
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
 from data.processor import DataProcessor
 
 MODEL_CARDS = {
-    'xgboost': None, 'catboost': None, 'lightgbm': None,
+    'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'ft-transformer': FTTransformer, 'saint': None, 
     't2g-former': None, 'excel-former': ExcelFormer,
@@ -54,9 +57,11 @@ def seed_everything(seed=42):
 
 def make_default_baseline(model_name):
     if model_name == 'xgboost':
-        pass
+        return XGBoostModel
     elif model_name == 'catboost':
-        pass
+        return CatBoostModel
+    elif model_name == 'lightgbm':
+        return LightGBMModel
     elif model_name == 'ft-transformer':
         pass
     elif model_name == 't2g-former':

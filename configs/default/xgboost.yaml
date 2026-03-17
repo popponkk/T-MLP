@@ -1,8 +1,12 @@
 model:
   booster: "gbtree"
-  n_estimators: 2000
+  n_estimators: 500
   n_jobs: -1
-  tree_method: "gpu_hist"
+  tree_method: "hist"
+  learning_rate: 0.05
+training:
+  early_stopping_rounds: 50
+  verbose: false
 fit:
-  early_stopping_rounds: 1999
+  early_stopping_rounds: 50
   verbose: false

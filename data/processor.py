@@ -80,7 +80,7 @@ class DataProcessor:
             raise ValueError("Missing training split in the dataset")
     
     @staticmethod
-    def prepare(dataset: Dataset, model: Optional[TabModel] = None, device: str = 'cuda'):
+    def prepare(dataset: Dataset, model: Optional[TabModel] = None, device: Optional[str] = None):
         assert model is not None or device is not None
         def get_spl(X: Optional[Union[ArrayDict, TensorDict]], spl):
             return None if X is None else X[spl]
