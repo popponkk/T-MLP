@@ -1,6 +1,7 @@
 # others
 __pycache__/
 /results/
+/logs/
 
 # data
 /data/csvs/
