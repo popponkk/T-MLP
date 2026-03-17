@@ -1,6 +1,7 @@
 import pickle
 import time
 import typing as ty
+import inspect
 from pathlib import Path
 
 import numpy as np
@@ -24,6 +25,11 @@ def _prepare_targets(task: str, ys: np.ndarray) -> np.ndarray:
     if task == 'binclass' and ys.max() != 1.0:
         return (ys == ys.max()).astype(np.float32)
     return ys
+
+
+def _filter_supported_kwargs(func, kwargs):
+    signature = inspect.signature(func)
+    return {key: value for key, value in kwargs.items() if key in signature.parameters}
 
 
 class _TreeModel(TabModel):
@@ -201,6 +207,7 @@ class XGBoostModel(_TreeModel):
         fit_kwargs = training_args.copy()
         if X_val is not None and y_val is not None:
             fit_kwargs['eval_set'] = [(X_val, y_val)]
+        fit_kwargs = _filter_supported_kwargs(self.model.fit, fit_kwargs)
         self.model.fit(X_train, y_train, **fit_kwargs)
 
     def _predict_values(self, X, task):
@@ -235,6 +242,7 @@ class CatBoostModel(_TreeModel):
         fit_kwargs = training_args.copy()
         if X_val is not None and y_val is not None:
             fit_kwargs['eval_set'] = (X_val, y_val)
+        fit_kwargs = _filter_supported_kwargs(self.model.fit, fit_kwargs)
         self.model.fit(X_train, y_train, **fit_kwargs)
 
     def _predict_values(self, X, task):
@@ -273,6 +281,7 @@ class LightGBMModel(_TreeModel):
                     self._lgb.early_stopping(training_args['early_stopping_rounds'], verbose=False),
                     self._lgb.log_evaluation(0),
                 ]
+        fit_kwargs = _filter_supported_kwargs(self.model.fit, fit_kwargs)
         self.model.fit(X_train, y_train, **fit_kwargs)
 
     def _predict_values(self, X, task):
