@@ -1,0 +1,15 @@
+model:
+  n_layers: 3
+  d_token: 192
+  n_heads: 8
+  attention_dropout: 0.2
+  ffn_dropout: 0.1
+  residual_dropout: 0.0
+  prenormalization: false
+  kv_compression: null
+  kv_compression_sharing: null
+  init_scale: 0.1
+training:
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+  optimizer: "adamw"
