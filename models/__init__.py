@@ -6,3 +6,6 @@ from .dcnv2 import DCNv2
 from .node_model import NODE
 from .tmlp import tMLP
 from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel
+from .tmlp_sr import SRTMLP
+from .tmlp_sr_pee import SRPEETMLP
+from .tmlp_sr_lgr import SRLGRTMLP

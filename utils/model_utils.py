@@ -18,6 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
+    SRTMLP, SRPEETMLP, SRLGRTMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -26,7 +27,8 @@ from data.processor import DataProcessor
 MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
-    'ft-transformer': FTTransformer, 'saint': None, 
+    'ft-transformer': FTTransformer, 'saint': None,
+    'tmlp-sr': SRTMLP, 'tmlp-sr-pee': SRPEETMLP, 'tmlp-sr-lgr': SRLGRTMLP,
     't2g-former': None, 'excel-former': ExcelFormer,
 }
 HPOLib = Literal['optuna', 'hyperopt'] # TODO: add 'hyperopt' support
