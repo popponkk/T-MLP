@@ -2,6 +2,7 @@
 __pycache__/
 /results/
 /logs/
+/catboost_info/ 
 
 # data
 /data/csvs/
