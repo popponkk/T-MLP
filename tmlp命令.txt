@@ -1,0 +1,36 @@
+启动codex：
+codex resume 019cf54b-500b-7440-84f0-1a0440643c5b
+
+启动conda环境：
+conda activate tmlp
+
+csv转数据集：
+python scripts/csv_to_regression_dataset.py --csv data/csvs/hpcg_hpgmg_mixed.csv --name hpcg_hpgmg_mixed
+
+csv转混合数据集
+python scripts/csv_to_regression_dataset_cross_workload.py \
+  --train-csv data/csvs/hpgmg3.csv \
+  --test-csv data/csvs/hpcg2.csv \
+  --name hpgmg_to_hpcg \
+  --label-col -1 \
+  --val-ratio 0.2 \
+  --seed 42 \
+  --drop-constant-cols \
+  --drop-duplicate-cols
+
+比较结果：
+python scripts/compare_results.py --dataset hpgmg_to_hpcg --sort-by r2 --output results/compare/hpgmg_to_hpcg-comparison.csv
+
+python scripts/compare_results.py --dataset hpcg_hpgmg_mixed --sort-by r2 --output results/compare/hpcg_hpgmg_mixed-reg-comparison.csv
+
+执行模型：
+nohup python main.py --model mlp --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/mlp-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model node --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/node-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model dcnv2 --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/dcnv2-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model ft-transformer --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/ft-transformer-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model autoint --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/autoint-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model tmlp --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/tmlp-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model excel-former --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/excel-former-hpcg2-gpu.log 2>&1 &
+nohup python main.py --model xgboost --dataset hpcg2 --device cpu > logs/xgboost-hpcg2.log 2>&1 &
+nohup python main.py --model catboost --dataset hpcg2 --device cpu > logs/catboost-hpcg2.log 2>&1 &
+nohup python main.py --model lightgbm --dataset hpcg2 --device cpu > logs/lightgbm-hpcg2.log 2>&1 &
