@@ -10,3 +10,4 @@ from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel
 from .tmlp_sr import SRTMLP
 from .tmlp_sr_pee import SRPEETMLP
 from .tmlp_sr_lgr import SRLGRTMLP
+from .pr_tmlp import PRTMLP
