@@ -109,6 +109,10 @@ class _AGRTMLP(nn.Module):
             for parameter in module.parameters():
                 parameter.requires_grad = trainable
 
+    def set_baseline_head_trainable(self, trainable: bool) -> None:
+        for parameter in self.base_head.parameters():
+            parameter.requires_grad = trainable
+
     def forward(self, x_num, x_cat, return_extras: bool = False):
         hidden, _ = self.backbone.encode_hidden(x_num, x_cat)
         y_base = self.base_head(hidden)
@@ -166,30 +170,42 @@ class AGRTMLP(TabModel):
         finetune_last = training_args.get("finetune_last_block", False)
         if freeze_epochs <= 0:
             self.model.set_backbone_trainable(True)
+            self.model.set_baseline_head_trainable(True)
             return
         if epoch_idx < freeze_epochs:
             self.model.set_backbone_trainable(False)
+            self.model.set_baseline_head_trainable(False)
         elif finetune_last:
             self.model.set_backbone_trainable(False)
             self.model.set_backbone_trainable(True, last_layer_only=True)
+            self.model.set_baseline_head_trainable(True)
         else:
             self.model.set_backbone_trainable(True)
+            self.model.set_baseline_head_trainable(True)
 
     @staticmethod
     def _corrcoef(predicted_error: np.ndarray, actual_error: np.ndarray) -> float:
-        if len(predicted_error) <= 1:
+        predicted_error = np.asarray(predicted_error).reshape(-1)
+        actual_error = np.asarray(actual_error).reshape(-1)
+        if predicted_error.size <= 1 or actual_error.size <= 1:
+            return 0.0
+        if predicted_error.size != actual_error.size:
             return 0.0
         pred_std = predicted_error.std()
         actual_std = actual_error.std()
         if pred_std < 1e-12 or actual_std < 1e-12:
             return 0.0
-        return float(np.corrcoef(predicted_error, actual_error)[0, 1])
+        corr = np.corrcoef(predicted_error, actual_error)[0, 1]
+        if not np.isfinite(corr):
+            return 0.0
+        return float(corr)
 
     def _evaluate_aux_stats(
         self,
         loader: ty.Tuple[DataLoader, int],
         placeholders,
     ) -> dict:
+        was_training = self.model.training
         self.model.eval()
         alpha_vals = []
         delta_vals = []
@@ -203,8 +219,11 @@ class AGRTMLP(TabModel):
             alpha_vals.append(extras["alpha"].detach().cpu().numpy())
             delta_vals.append(extras["delta_y"].abs().detach().cpu().numpy())
             pred_err_vals.append(extras["predicted_error"].detach().cpu().numpy())
-            actual_err_vals.append((y - extras["y_base"].detach()).abs().cpu().numpy())
-        self.model.train()
+            actual_err_vals.append(
+                (y - extras["y_base"].detach().squeeze(-1)).abs().cpu().numpy()
+            )
+        if was_training:
+            self.model.train()
         alpha_all = np.concatenate(alpha_vals, axis=0).reshape(-1)
         delta_all = np.concatenate(delta_vals, axis=0).reshape(-1)
         pred_err_all = np.concatenate(pred_err_vals, axis=0).reshape(-1)
