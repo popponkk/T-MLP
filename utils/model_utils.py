@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -28,6 +28,11 @@ MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
+    'agr_tmlp': AGRTMLP,
+    'agr_tmlp_no_err_head': AGRTMLP,
+    'agr_tmlp_no_gate_reg': AGRTMLP,
+    'agr_tmlp_no_res_reg': AGRTMLP,
+    'agr_tmlp_gate_from_h_only': AGRTMLP,
     'pr_tmlp_residual': PRTMLP,
     'pr_tmlp_residual_no_sparse': PRTMLP,
     'pr_tmlp_residual_no_balance': PRTMLP,
@@ -143,6 +148,13 @@ def make_baseline(
             feat_gate=feat_gate, pruning=pruning, dataset=dataset)
     if model_name.startswith('pr_tmlp'):
         return PRTMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
+            variant_name=model_name,
+        )
+    if model_name.startswith('agr_tmlp'):
+        return AGRTMLP(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,
