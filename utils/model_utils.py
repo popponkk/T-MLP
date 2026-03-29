@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -28,6 +28,7 @@ MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
+    'adr_tmlp': ADRTMLP,
     'agr_tmlp': AGRTMLP,
     'agr_tmlp_no_err_head': AGRTMLP,
     'agr_tmlp_no_gate_reg': AGRTMLP,
@@ -159,6 +160,12 @@ def make_baseline(
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,
             variant_name=model_name,
+        )
+    if model_name == 'adr_tmlp':
+        return ADRTMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
         )
     if model_name.startswith('hre_tmlp'):
         return HRETMLP(
