@@ -14,3 +14,4 @@ from .pr_tmlp import PRTMLP
 from .hre_tmlp import HRETMLP
 from .agr_tmlp import AGRTMLP
 from .adr_tmlp import ADRTMLP
+from .sga_tmlp_lite import SGATMLPLite

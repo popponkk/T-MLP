@@ -5,7 +5,7 @@ codex resume 019cf54b-500b-7440-84f0-1a0440643c5b
 conda activate tmlp
 
 csv转数据集：
-python scripts/csv_to_regression_dataset.py --csv data/csvs/hpcg_hpgmg_mixed.csv --name hpcg_hpgmg_mixed
+python scripts/csv_to_regression_dataset.py --csv data/csvs/ramspeed.csv --name ramspeed
 
 csv转混合数据集
 python scripts/csv_to_regression_dataset_cross_workload.py \

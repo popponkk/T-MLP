@@ -1,0 +1,20 @@
+model:
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  top_k: 12
+  token_dim: 16
+  dropout: 0.1
+  lambda_beta: 1.0e-3
+  lambda_corr: 1.0e-4
+  enable_featmix: true
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  huber_delta: 1.0
+  featmix_alpha: 0.4
