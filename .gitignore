@@ -5,6 +5,7 @@ __pycache__/
 /catboost_info/ 
 
 # data
-/data/csvs/
-/data/custom_datasets/
-/data/datasets/
+/data/*
+!/data/__init__.py
+!/data/env.py
+!/data/processor.py
