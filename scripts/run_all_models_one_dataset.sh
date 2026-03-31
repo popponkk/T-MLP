@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd ~/ProjectCodes/T-MLP
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
 
-DATASET="${1:?usage: bash run_all_models_one_dataset.sh <dataset>}"
+mkdir -p logs
+
+DATASET="${1:?usage: bash scripts/run_all_models_one_dataset.sh <dataset>}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 
 GPU0_MODELS=(
