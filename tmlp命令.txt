@@ -1,5 +1,6 @@
 启动codex：
-codex resume 019cf54b-500b-7440-84f0-1a0440643c5b
+codex resume 019cf54b-500b-7440-84f0-1a0440643c5b      (机革)
+codex resume 019d198d-a39a-7bc3-b32e-e1068381b2bf      (MSI)
 
 启动conda环境：
 conda activate tmlp
