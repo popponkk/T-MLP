@@ -286,9 +286,14 @@ def cat_encode(
     if encoding is None:
         return (X, False)
     elif encoding == 'one-hot':
-        encoder = sklearn.preprocessing.OneHotEncoder(
-            handle_unknown='ignore', sparse=False, dtype=np.float32  # type: ignore[code]
-        )
+        try:
+            encoder = sklearn.preprocessing.OneHotEncoder(
+                handle_unknown='ignore', sparse_output=False, dtype=np.float32  # type: ignore[code]
+            )
+        except TypeError:
+            encoder = sklearn.preprocessing.OneHotEncoder(
+                handle_unknown='ignore', sparse=False, dtype=np.float32  # type: ignore[code]
+            )
         encoder.fit(X['train'])
         return ({k: encoder.transform(v) for k, v in X.items()}, True)  # type: ignore[code]
     elif encoding == 'counter':
