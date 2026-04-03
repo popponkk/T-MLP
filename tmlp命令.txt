@@ -22,7 +22,7 @@ python scripts/csv_to_regression_dataset_cross_workload.py \
 比较结果：
 python scripts/compare_results.py --dataset hpgmg_to_hpcg --sort-by r2 --output results/compare/hpgmg_to_hpcg-comparison.csv
 
-python scripts/compare_results.py --dataset hpcg_hpgmg_mixed --sort-by r2 --output results/compare/hpcg_hpgmg_mixed-reg-comparison.csv
+python scripts/compare_results.py --dataset Brazilian_houses --sort-by r2 --output results/compare/Brazilian_houses-comparison.csv
 
 执行模型：
 nohup python main.py --model mlp --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/mlp-hpcg2-gpu.log 2>&1 &
