@@ -26,12 +26,45 @@ python scripts/compare_results.py --dataset Brazilian_houses --sort-by r2 --outp
 
 执行模型：
 nohup python main.py --model mlp --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/mlp-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model node --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/node-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model dcnv2 --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/dcnv2-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model ft-transformer --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/ft-transformer-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model autoint --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/autoint-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model tmlp --dataset hpcg2 --device cuda --gpu 1 --batch_size 32 --lr 1e-5 > logs/tmlp-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model excel-former --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/excel-former-hpcg2-gpu.log 2>&1 &
-nohup python main.py --model xgboost --dataset hpcg2 --device cpu > logs/xgboost-hpcg2.log 2>&1 &
-nohup python main.py --model catboost --dataset hpcg2 --device cpu > logs/catboost-hpcg2.log 2>&1 &
-nohup python main.py --model lightgbm --dataset hpcg2 --device cpu > logs/lightgbm-hpcg2.log 2>&1 &
+
+模型：
+  - xgboost
+  - catboost
+  - lightgbm
+  - mlp
+  - tmlp
+  - autoint
+  - dcnv2
+  - node
+  - baseline_tmlp
+  - sga_tmlp_lite
+  - sga_tmlp_lite_no_beta_reg
+  - sga_tmlp_lite_no_corr_reg
+  - sga_tmlp_lite_no_featmix
+  - sga_tmlp_lite_topk4
+  - sga_tmlp_lite_topk12
+  - adr_tmlp
+  - agr_tmlp
+  - agr_tmlp_no_err_head
+  - agr_tmlp_no_gate_reg
+  - agr_tmlp_no_res_reg
+  - agr_tmlp_gate_from_h_only
+  - pr_tmlp_residual
+  - pr_tmlp_residual_no_sparse
+  - pr_tmlp_residual_no_balance
+  - pr_tmlp_residual_no_sep
+  - pr_tmlp_pure_experts
+  - hre_tmlp
+  - hre_tmlp_no_balance
+  - hre_tmlp_no_div
+  - hre_tmlp_no_alpha
+  - hre_tmlp_no_global_residual
+  - hre_tmlp_dense_routing
+  - moe_tmlp
+  - moe_tmlp_no_sparse
+  - moe_tmlp_no_diversity
+  - ft-transformer
+  - tmlp-sr
+  - tmlp-sr-pee
+  - tmlp-sr-lgr
+  - excel-former
