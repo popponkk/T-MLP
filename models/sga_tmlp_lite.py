@@ -55,6 +55,7 @@ class _SGATMLPLite(nn.Module):
         d_out: int,
         top_k: int = 8,
         token_dim: int = 16,
+        num_spa_blocks: int = 1,
         dropout: float = 0.1,
         lambda_beta: float = 1e-3,
         lambda_corr: float = 1e-4,
@@ -73,6 +74,7 @@ class _SGATMLPLite(nn.Module):
         self.n_num_features = d_numerical
         self.top_k = top_k
         self.token_dim = token_dim
+        self.num_spa_blocks = num_spa_blocks
         self.lambda_beta = lambda_beta
         self.lambda_corr = lambda_corr
         self.enable_featmix = enable_featmix
@@ -90,7 +92,9 @@ class _SGATMLPLite(nn.Module):
             nn.Linear(selector_hidden, 1),
         )
         self.token_projector = nn.Linear(d_token, token_dim)
-        self.spa_block = SelectiveAttentionBlock(token_dim, dropout=dropout)
+        self.spa_blocks = nn.ModuleList(
+            [SelectiveAttentionBlock(token_dim, dropout=dropout) for _ in range(num_spa_blocks)]
+        )
         self.correction_head = nn.Sequential(
             nn.LayerNorm(token_dim),
             nn.Linear(token_dim, correction_hidden),
@@ -133,8 +137,9 @@ class _SGATMLPLite(nn.Module):
 
         feature_scores = self.feature_selector(feature_tokens).squeeze(-1)
         selected_tokens, selected_scores = self._select_topk(feature_tokens, feature_scores)
-        projected_tokens = self.token_projector(selected_tokens)
-        interaction_tokens = self.spa_block(projected_tokens, selected_scores)
+        interaction_tokens = self.token_projector(selected_tokens)
+        for spa_block in self.spa_blocks:
+            interaction_tokens = spa_block(interaction_tokens, selected_scores)
         interaction_summary = interaction_tokens.mean(dim=1)
 
         y_base = self.base_head(cls_hidden)
@@ -187,6 +192,7 @@ class SGATMLPLite(TabModel):
         self.saved_model_config = model_config.copy()
         model_config.setdefault("top_k", 8)
         model_config.setdefault("token_dim", 16)
+        model_config.setdefault("num_spa_blocks", 1)
         model_config.setdefault("dropout", 0.1)
         model_config.setdefault("lambda_beta", 1e-3)
         model_config.setdefault("lambda_corr", 1e-4)

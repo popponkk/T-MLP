@@ -68,6 +68,33 @@ class AGRGate(nn.Module):
         return torch.sigmoid(self.net(gate_input))
 
 
+class AGRSoftGate(nn.Module):
+    def __init__(self, hidden_dim: int, tau: float = 2.0) -> None:
+        super().__init__()
+        self.tau = tau
+        gate_hidden = max(hidden_dim // 4, 16)
+        self.net = nn.Sequential(
+            nn.Linear(hidden_dim + 2, gate_hidden),
+            nn.ReLU(),
+            nn.Linear(gate_hidden, 1),
+        )
+        self._init_small()
+
+    def _init_small(self) -> None:
+        first = ty.cast(nn.Linear, self.net[0])
+        last = ty.cast(nn.Linear, self.net[-1])
+        nn_init.normal_(first.weight, mean=0.0, std=1e-3)
+        nn_init.zeros_(first.bias)
+        nn_init.normal_(last.weight, mean=0.0, std=1e-3)
+        nn_init.constant_(last.bias, -4.0)
+
+    def forward(self, hidden: Tensor, predicted_error: Tensor, delta_raw: Tensor) -> Tensor:
+        # Softgate sees residual magnitude, but detach avoids gate/residual feedback oscillation.
+        gate_input = torch.cat([hidden, predicted_error, delta_raw.detach().abs()], dim=1)
+        # Larger tau softens early gate decisions and keeps correction gradual.
+        return torch.sigmoid(self.net(gate_input) / max(self.tau, 1e-6))
+
+
 class _AGRTMLP(nn.Module):
     def __init__(
         self,
@@ -78,6 +105,9 @@ class _AGRTMLP(nn.Module):
         residual_dropout_head: float = 0.1,
         use_error_head: bool = True,
         gate_from_h_only: bool = False,
+        softgate: bool = False,
+        gate_tau: float = 2.0,
+        residual_scale_init: float = -2.0,
         **backbone_config,
     ) -> None:
         super().__init__()
@@ -92,8 +122,14 @@ class _AGRTMLP(nn.Module):
         self.base_head = nn.Linear(self.backbone.d_token, d_out)
         self.residual_head = AGRResidualHead(self.backbone.d_token, residual_dropout_head)
         self.use_error_head = use_error_head
+        self.softgate = softgate
         self.error_head = AGRErrorHead(self.backbone.d_token, residual_dropout_head)
-        self.gate = AGRGate(self.backbone.d_token, use_error_feature=not gate_from_h_only)
+        self.gate = (
+            AGRSoftGate(self.backbone.d_token, tau=gate_tau)
+            if softgate
+            else AGRGate(self.backbone.d_token, use_error_feature=not gate_from_h_only)
+        )
+        self.res_scale = nn.Parameter(torch.tensor(residual_scale_init)) if softgate else None
 
     def set_backbone_trainable(
         self,
@@ -116,13 +152,20 @@ class _AGRTMLP(nn.Module):
     def forward(self, x_num, x_cat, return_extras: bool = False):
         hidden, _ = self.backbone.encode_hidden(x_num, x_cat)
         y_base = self.base_head(hidden)
-        delta_y = self.residual_head(hidden)
-        predicted_error = self.error_head(hidden) if self.use_error_head else torch.zeros_like(delta_y)
-        alpha = self.gate(hidden, predicted_error)
+        delta_raw = self.residual_head(hidden)
+        predicted_error = self.error_head(hidden) if self.use_error_head else torch.zeros_like(delta_raw)
+        if self.softgate:
+            # Smooth residual magnitude so alpha does not have to absorb all correction risk.
+            delta_y = F.softplus(self.res_scale) * torch.tanh(delta_raw)
+            alpha = self.gate(hidden, predicted_error, delta_raw)
+        else:
+            delta_y = delta_raw
+            alpha = self.gate(hidden, predicted_error)
         prediction = y_base + alpha * delta_y
         extras = {
             "y_base": y_base,
             "delta_y": delta_y,
+            "delta_raw": delta_raw,
             "predicted_error": predicted_error,
             "alpha": alpha,
         }
@@ -163,6 +206,9 @@ class AGRTMLP(TabModel):
         model_config.setdefault("residual_dropout_head", 0.1)
         model_config.setdefault("use_error_head", True)
         model_config.setdefault("gate_from_h_only", False)
+        model_config.setdefault("softgate", False)
+        model_config.setdefault("gate_tau", 2.0)
+        model_config.setdefault("residual_scale_init", -2.0)
         return model_config
 
     def _set_train_stage(self, epoch_idx: int, training_args: dict) -> None:

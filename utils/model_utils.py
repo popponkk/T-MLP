@@ -40,6 +40,7 @@ MODEL_CARDS = {
     'agr_tmlp_no_gate_reg': AGRTMLP,
     'agr_tmlp_no_res_reg': AGRTMLP,
     'agr_tmlp_gate_from_h_only': AGRTMLP,
+    'agr_tmlp_softgate': AGRTMLP,
     'pr_tmlp_residual': PRTMLP,
     'pr_tmlp_residual_no_sparse': PRTMLP,
     'pr_tmlp_residual_no_balance': PRTMLP,

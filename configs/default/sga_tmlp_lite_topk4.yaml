@@ -7,6 +7,7 @@ model:
   residual_dropout: 0.1
   top_k: 4
   token_dim: 16
+  num_spa_blocks: 1
   dropout: 0.1
   lambda_beta: 1.0e-3
   lambda_corr: 1.0e-4
