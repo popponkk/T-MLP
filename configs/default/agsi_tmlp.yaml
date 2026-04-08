@@ -1,0 +1,30 @@
+model:
+  model_name: agsi_tmlp
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  token_dim: 16
+  spa_num_heads: 2
+  topk_ratio: 0.25
+  topk_min: 8
+  topk_max: 16
+  top_k: null
+  beta_init_bias: -2.0
+  use_gate_stats_for_beta: true
+  use_featmix: false
+  use_hidmix: false
+  use_gate_reg: false
+  use_corr_reg: false
+  dropout: 0.1
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  huber_delta: 1.0
+  lambda_gate: 0.0
+  lambda_corr: 0.0
+  featmix_alpha: 0.4

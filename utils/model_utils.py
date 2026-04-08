@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -28,6 +28,7 @@ MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
+    'agsi_tmlp': AGSITMLP,
     'sga_tmlp_lite': SGATMLPLite,
     'sga_tmlp_lite_no_beta_reg': SGATMLPLite,
     'sga_tmlp_lite_no_corr_reg': SGATMLPLite,
@@ -160,6 +161,12 @@ def make_baseline(
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,
             variant_name=model_name,
+        )
+    if model_name == 'agsi_tmlp':
+        return AGSITMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
         )
     if model_name.startswith('agr_tmlp'):
         return AGRTMLP(
