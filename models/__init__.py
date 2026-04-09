@@ -17,3 +17,4 @@ from .adr_tmlp import ADRTMLP
 from .sga_tmlp_lite import SGATMLPLite
 from .agsi_tmlp import AGSITMLP
 from .sr_agr_tmlp_lite import SRAGRTMLPLite
+from .agr_tmlp_rex2_lite import AGRTMLPRex2Lite
