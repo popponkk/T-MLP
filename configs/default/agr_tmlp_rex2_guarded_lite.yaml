@@ -1,0 +1,31 @@
+model:
+  model_name: agr_tmlp_rex2_guarded_lite
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  residual_dropout_head: 0.0
+  gate_reg_weight_scale: 0.1
+  use_corr_reg: false
+  use_featmix: false
+  use_hidmix: false
+  safe_residual_hidden_ratio: 0.5
+  expert_hidden_ratio: 0.25
+  num_residual_experts: 2
+  beta_init_bias: -2.0
+  gamma_init_bias: -3.5
+  gamma_cap: 0.35
+  expert_output_scale_init: 0.1
+  use_router: true
+  router_temperature: 1.5
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  huber_delta: 1.0
+  lambda_gate: 1.0e-3
+  lambda_corr: 0.0
+  featmix_alpha: 0.4

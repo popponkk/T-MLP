@@ -18,3 +18,4 @@ from .sga_tmlp_lite import SGATMLPLite
 from .agsi_tmlp import AGSITMLP
 from .sr_agr_tmlp_lite import SRAGRTMLPLite
 from .agr_tmlp_rex2_lite import AGRTMLPRex2Lite
+from .agr_tmlp_rex2_guarded_lite import AGRTMLPRex2GuardedLite
