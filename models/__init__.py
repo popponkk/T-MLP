@@ -20,3 +20,4 @@ from .sr_agr_tmlp_lite import SRAGRTMLPLite
 from .agr_tmlp_rex2_lite import AGRTMLPRex2Lite
 from .agr_tmlp_rex2_guarded_lite import AGRTMLPRex2GuardedLite
 from .agr_tmlp_switch_lite import AGRTMLPSwitchLite
+from .agr_tmlp_switch_hardlite import AGRTMLPSwitchHardLite

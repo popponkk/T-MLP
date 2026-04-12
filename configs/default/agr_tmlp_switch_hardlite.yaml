@@ -1,0 +1,42 @@
+model:
+  model_name: agr_tmlp_switch_hardlite
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  residual_dropout_head: 0.0
+  gate_reg_weight_scale: 0.05
+  use_corr_reg: false
+  use_featmix: false
+  use_hidmix: false
+  safe_hidden_ratio: 0.5
+  num_residual_experts: 2
+  expert_hidden_ratio: 0.25
+  router_temperature: 1.5
+  expert_output_scale_init: 0.15
+  topk_ratio: 0.15
+  topk_min: 4
+  topk_max: 8
+  cross_rank: 8
+  cross_output_scale_init: 0.1
+  beta_init_bias: -2.0
+  mode_temperature: 0.35
+  use_gumbel_mode_gate: false
+  mode_sparsity_weight: 1.0e-4
+  mode_gate_bias_off: 2.0
+  mode_gate_bias_safe: 1.2
+  mode_gate_bias_expert: -0.8
+  mode_gate_bias_cross: -1.0
+  mix_output_scale: 1.0
+  use_router: true
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  huber_delta: 1.0
+  lambda_gate: 1.0e-3
+  lambda_corr: 0.0
+  featmix_alpha: 0.4
