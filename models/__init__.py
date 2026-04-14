@@ -23,3 +23,4 @@ from .agr_tmlp_switch_lite import AGRTMLPSwitchLite
 from .agr_tmlp_switch_lite_td import AGRTMLPSwitchLiteTD
 from .agr_tmlp_switch_hardlite import AGRTMLPSwitchHardLite
 from .cgr_tmlp import CGRTMLP
+from .cgr_tmlp_v2 import CGRTMLPV2
