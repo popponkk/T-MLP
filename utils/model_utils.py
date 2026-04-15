@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -32,6 +32,7 @@ MODEL_CARDS = {
     'cgr_tmlp_v2': CGRTMLPV2,
     'lar_tmlp': LARTMLP,
     'hlr_tmlp': HLRTMLP,
+    'scgr_tmlp': SCGRTMLP,
     'agr_tmlp_switch_lite_td': AGRTMLPSwitchLiteTD,
     'agr_tmlp_switch_hardlite': AGRTMLPSwitchHardLite,
     'agr_tmlp_switch_lite': AGRTMLPSwitchLite,
@@ -222,6 +223,12 @@ def make_baseline(
         )
     if model_name == 'hlr_tmlp':
         return HLRTMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
+        )
+    if model_name == 'scgr_tmlp':
+        return SCGRTMLP(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,
