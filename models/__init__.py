@@ -27,3 +27,4 @@ from .cgr_tmlp_v2 import CGRTMLPV2
 from .lar_tmlp import LARTMLP
 from .hlr_tmlp import HLRTMLP
 from .scgr_tmlp import SCGRTMLP
+from .cgr_tmlp_v3 import CGRTMLPV3
