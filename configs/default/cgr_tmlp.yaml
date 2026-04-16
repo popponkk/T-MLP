@@ -19,20 +19,12 @@ model:
   top_summary_dim: 16
   spec_hidden_ratio: 0.25
   conf_hidden_ratio: 0.25
-  gamma_init_bias: -2.6
-  spec_output_scale: 0.10
+  gamma_init_bias: -2.0
 
 training:
   lr: 1.0e-4
-  base_lr: 1.0e-4
-  spec_lr: 5.0e-5
   weight_decay: 0.0
   optimizer: "adamw"
-  max_epochs: 200
-  train_mode: "two_stage"
-  stage1_ratio: 0.4
-  early_stop_patience: 8
-  main_loss_type: "huber"
   huber_delta: 1.0
   lambda_gate: 1.0e-3
   lambda_corr: 0.0
