@@ -87,6 +87,7 @@ class _CGRTMLP(nn.Module):
         topk_max: int = 8,
         top_summary_dim: int = 16,
         gamma_init_bias: float = -2.0,
+        spec_output_scale: float = 1.0,
         **backbone_config,
     ) -> None:
         super().__init__()
@@ -112,6 +113,7 @@ class _CGRTMLP(nn.Module):
         self.topk_ratio = topk_ratio
         self.topk_min = int(topk_min)
         self.topk_max = int(topk_max)
+        self.spec_output_scale = float(spec_output_scale)
 
         d_token = self.backbone.d_token
         gate_hidden = max(d_numerical // 2, 16)
@@ -183,6 +185,8 @@ class _CGRTMLP(nn.Module):
         z_top = self.top_summary(topk_x * topk_w)
 
         delta_spec = self.spec_head(torch.cat([h_base, z_top], dim=1))
+        if self.spec_output_scale != 1.0:
+            delta_spec = self.spec_output_scale * torch.tanh(delta_spec)
         conf_input = torch.cat(
             [
                 h_base,
@@ -257,7 +261,74 @@ class CGRTMLP(TabModel):
         model_config.setdefault("topk_max", 8)
         model_config.setdefault("top_summary_dim", 16)
         model_config.setdefault("gamma_init_bias", -2.0)
+        model_config.setdefault("spec_output_scale", 1.0)
         return model_config
+
+    @staticmethod
+    def _set_requires_grad(module: nn.Module, requires_grad: bool) -> None:
+        for parameter in module.parameters():
+            parameter.requires_grad = requires_grad
+
+    def _set_stage_trainable(self, stage: str) -> None:
+        train_spec = stage != "stage1"
+        self._set_requires_grad(self.model.spec_head, train_spec)
+        self._set_requires_grad(self.model.conf_gate, train_spec)
+
+    def _make_cgr_optimizer(self, training_args: dict, stage: str):
+        optimizer_name = training_args["optimizer"]
+        weight_decay = training_args["weight_decay"]
+        base_lr = training_args.get("base_lr", training_args.get("lr", 1e-4))
+        spec_lr = training_args.get("spec_lr", base_lr)
+        if stage == "stage1":
+            spec_lr = 0.0
+
+        base_modules = [
+            self.model.input_gate,
+            self.model.backbone,
+            self.model.base_head,
+            self.model.safe_residual_head,
+            self.model.top_summary,
+        ]
+        spec_modules = [self.model.spec_head, self.model.conf_gate]
+        param_groups = [
+            {
+                "params": [p for module in base_modules for p in module.parameters() if p.requires_grad],
+                "lr": base_lr,
+                "name": "base",
+            },
+            {
+                "params": [p for module in spec_modules for p in module.parameters() if p.requires_grad],
+                "lr": spec_lr,
+                "name": "spec",
+            },
+        ]
+        param_groups = [group for group in param_groups if len(group["params"]) > 0]
+        optimizer_cls = {
+            "adam": torch.optim.Adam,
+            "adamw": torch.optim.AdamW,
+            "sgd": torch.optim.SGD,
+        }[optimizer_name]
+        if optimizer_cls is torch.optim.SGD:
+            optimizer = optimizer_cls(param_groups, weight_decay=weight_decay, momentum=0.9)
+        else:
+            optimizer = optimizer_cls(param_groups, weight_decay=weight_decay)
+        return optimizer, None
+
+    @staticmethod
+    def _format_group_lrs(optimizer) -> str:
+        return ", ".join(
+            f"{group.get('name', f'group{i}')}={group['lr']:.6g}"
+            for i, group in enumerate(optimizer.param_groups)
+        )
+
+    @staticmethod
+    def _main_loss(predictions: Tensor, target: Tensor, training_args: dict) -> Tensor:
+        loss_type = training_args.get("main_loss_type", "huber")
+        if loss_type == "mse":
+            return F.mse_loss(predictions, target)
+        if loss_type == "huber":
+            return F.huber_loss(predictions, target, delta=training_args["huber_delta"])
+        raise ValueError(f"Unsupported main_loss_type: {loss_type}")
 
     @staticmethod
     def _apply_featmix(x_num, y, enabled: bool, alpha: float = 0.4):
@@ -298,14 +369,33 @@ class CGRTMLP(TabModel):
         training_args.setdefault("batch_size", 64)
         training_args.setdefault("max_epochs", 10000)
         training_args.setdefault("patience", patience)
+        training_args.setdefault("early_stop_patience", 8)
         training_args.setdefault("save_frequency", "epoch")
         training_args.setdefault("huber_delta", 1.0)
+        training_args.setdefault("main_loss_type", "huber")
+        training_args.setdefault("train_mode", "single")
+        training_args.setdefault("stage1_ratio", 0.4)
+        training_args.setdefault("base_lr", training_args.get("lr", 1e-4))
+        training_args.setdefault("spec_lr", training_args.get("lr", 1e-4) * 0.5)
         training_args.setdefault("lambda_gate", 1e-3)
         training_args.setdefault("lambda_corr", 0.0)
         training_args.setdefault("featmix_alpha", 0.4)
+        if training_args["train_mode"] == "two_stage":
+            training_args["patience"] = int(training_args["early_stop_patience"])
         self.training_config = training_args
 
-        optimizer, scheduler = TabModel.make_optimizer(self.model, training_args)
+        train_mode = training_args["train_mode"]
+        current_stage = "stage1" if train_mode == "two_stage" else "single"
+        self._set_stage_trainable(current_stage)
+        if train_mode == "two_stage":
+            optimizer, scheduler = self._make_cgr_optimizer(training_args, current_stage)
+        else:
+            optimizer, scheduler = TabModel.make_optimizer(self.model, training_args)
+        self.append_log(
+            meta_args["save_path"],
+            f"[training] mode={train_mode} | stage={current_stage} | lrs={self._format_group_lrs(optimizer)}"
+            f" | patience={training_args['patience']} | main_loss={training_args['main_loss_type']}",
+        )
         if train_loader is not None:
             train_loader, placeholders = train_loader
             training_args["batch_size"] = train_loader.batch_size
@@ -335,7 +425,20 @@ class CGRTMLP(TabModel):
 
         steps_per_epoch = len(train_loader)
         tot_step, tot_time = 0, 0.0
-        for _ in range(training_args["max_epochs"]):
+        stage1_epochs = max(1, int(round(training_args["max_epochs"] * training_args["stage1_ratio"])))
+        for epoch_idx in range(training_args["max_epochs"]):
+            desired_stage = "stage1" if train_mode == "two_stage" and epoch_idx < stage1_epochs else (
+                "stage2" if train_mode == "two_stage" else "single"
+            )
+            if desired_stage != current_stage:
+                current_stage = desired_stage
+                self._set_stage_trainable(current_stage)
+                optimizer, scheduler = self._make_cgr_optimizer(training_args, current_stage)
+                self.no_improvement = 0
+                self.append_log(
+                    meta_args["save_path"],
+                    f"[stage-switch] epoch={epoch_idx + 1} | stage={current_stage} | lrs={self._format_group_lrs(optimizer)}",
+                )
             self.model.train()
             tot_loss = 0.0
             gamma_vals = []
@@ -355,7 +458,7 @@ class CGRTMLP(TabModel):
                 predictions, extras = self.model(mixed_num, x_cat, return_extras=True)
                 forward_time = time.time() - start_time
 
-                loss = F.huber_loss(predictions, mixed_y, delta=training_args["huber_delta"])
+                loss = self._main_loss(predictions, mixed_y, training_args)
                 gate_reg = extras["gate_scores"].mean()
                 loss = loss + (
                     training_args["lambda_gate"]
@@ -419,23 +522,34 @@ class CGRTMLP(TabModel):
                 self.append_log(
                     meta_args["save_path"],
                     (
-                        f"[cgr] gamma_mean={np.mean(gamma_vals):.6g}"
+                        f"[cgr] stage={current_stage}"
+                        f" | lrs={self._format_group_lrs(optimizer)}"
+                        f" | gamma_mean={np.mean(gamma_vals):.6g}"
                         f" | abs_delta_safe={np.mean(safe_vals):.6g}"
                         f" | abs_delta_spec={np.mean(spec_vals):.6g}"
                         f" | z_top_norm={np.mean(z_top_vals):.6g}"
                     ),
                 )
+                eval_patience = 0 if train_mode == "two_stage" and current_stage == "stage1" else training_args["patience"]
                 is_early_stop = self.save_evaluate_dnn(
                     tot_step, steps_per_epoch, tot_loss, tot_time,
-                    task, training_args["patience"], meta_args["save_path"],
+                    task, eval_patience, meta_args["save_path"],
                     dev_loader, y_std, test_loader=test_loader,
                 )
                 if is_early_stop:
                     self.save(meta_args["save_path"])
                     self.load_best_dnn(meta_args["save_path"])
+                    self.append_log(
+                        meta_args["save_path"],
+                        f"[early-stop] best_epoch={self.history['val']['best_epoch']} | stop_epoch={tot_step // steps_per_epoch}",
+                    )
                     return
         self.save(meta_args["save_path"])
         self.load_best_dnn(meta_args["save_path"])
+        self.append_log(
+            meta_args["save_path"],
+            f"[training-end] best_epoch={self.history['val']['best_epoch']} | stop_epoch={tot_step // steps_per_epoch}",
+        )
 
     def predict(
         self,

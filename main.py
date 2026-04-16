@@ -24,6 +24,8 @@ parser.add_argument('--wd', type=float, default=0)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--device', type=str, choices=['auto', 'cpu', 'cuda'], default='auto')
 parser.add_argument('--seed', type=int, default=42)
+parser.add_argument('--config', type=str, default=None)
+parser.add_argument('--output_suffix', type=str, default='')
 args = parser.parse_args()
 
 if args.device == 'cpu':
@@ -42,6 +44,8 @@ if args.model == 'tmlp' and any([args.feat_gate, args.pruning]):
     output_dir = f'results/{args.model}{sparsity_scheme}/{args.dataset}'
 else:
     output_dir = f'results/{args.model}/{args.dataset}'
+if args.output_suffix:
+    output_dir = output_dir.replace(f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1)
 # dataset
 print('preparing dataset: ', args.dataset)
 append_ids = args.model == 'tmlp' and args.feat_gate == 'xgb_dropout'
@@ -53,7 +57,7 @@ dataset = DataProcessor.load_preproc_default(
 # model config
 user_defined = False
 if args.model != 'tmlp' or user_defined:
-    config_file = f'configs/default/{args.model}.yaml'
+    config_file = args.config or f'configs/default/{args.model}.yaml'
     configs = load_config_from_file(config_file)
     configs.setdefault('training', configs.get('fit', {}))
     # uniform model & training args
