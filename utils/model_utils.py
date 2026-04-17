@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -29,6 +29,7 @@ MODEL_CARDS = {
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
     'cgr_tmlp': CGRTMLP,
+    'cgr_tmlp_stage2': CGRTMLPStage2,
     'cgr_tmlp_v2': CGRTMLPV2,
     'cgr_tmlp_v3': CGRTMLPV3,
     'lar_tmlp': LARTMLP,
@@ -206,6 +207,12 @@ def make_baseline(
         )
     if model_name == 'cgr_tmlp':
         return CGRTMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
+        )
+    if model_name == 'cgr_tmlp_stage2':
+        return CGRTMLPStage2(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,

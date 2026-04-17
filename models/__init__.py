@@ -28,3 +28,4 @@ from .lar_tmlp import LARTMLP
 from .hlr_tmlp import HLRTMLP
 from .scgr_tmlp import SCGRTMLP
 from .cgr_tmlp_v3 import CGRTMLPV3
+from .cgr_tmlp_stage2 import CGRTMLPStage2
