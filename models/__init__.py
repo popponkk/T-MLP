@@ -31,3 +31,4 @@ from .cgr_tmlp_v3 import CGRTMLPV3
 from .cgr_tmlp_stage2 import CGRTMLPStage2
 from .nr_cgr_tmlp import NRCGRTMLP
 from .qcal_cgr_tmlp import QCALCGRTMLP
+from .ggpl_cgr_tmlp import GGPLCGRTMLP
