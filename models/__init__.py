@@ -34,3 +34,4 @@ from .qcal_cgr_tmlp import QCALCGRTMLP
 from .ggpl_cgr_tmlp import GGPLCGRTMLP
 from .rgc_cgr_tmlp import RGCCGRTMLP
 from .agpl_cgr_tmlp import AGPLCGRTMLP
+from .apar_cgr_tmlp import APARCGRTMLP
