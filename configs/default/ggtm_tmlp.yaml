@@ -1,0 +1,38 @@
+model:
+  model_name: ggtm_tmlp
+
+  use_ggpl_frontend: true
+  num_breakpoints: 8
+  emb_dim_per_feature: 4
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggtm_breakpoints"
+  learnable_breakpoints: true
+  use_numeric_proj: true
+  numeric_proj_scale: 0.1
+
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+
+  num_heads: 4
+  head_hidden_dim: 32
+  head_diversity_type: "independent_last_layer"
+  prediction_reduce: "mean"
+
+  rank_hidden_dim: 64
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  main_loss_type: "huber"
+  huber_delta: 1.0
+
+  use_rank_aux: true
+  lambda_rank: 0.05
+  pairs_per_batch: "batch_size"
+  featmix_alpha: 0.4
