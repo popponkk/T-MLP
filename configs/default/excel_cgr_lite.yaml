@@ -1,0 +1,28 @@
+model:
+  model_name: excel_cgr_lite
+  base_model: excelformer
+  use_excelformer_backbone: true
+  token_bias: true
+  n_layers: 3
+  d_token: 256
+  n_heads: 8
+  attention_dropout: 0.2
+  ffn_dropout: 0.1
+  residual_dropout: 0.0
+  prenormalization: true
+  kv_compression: null
+  kv_compression_sharing: null
+  init_scale: 0.1
+
+  use_cgr_refinement: true
+  safe_hidden_dim: 32
+  spec_hidden_dim: 32
+  spec_scale: 0.1
+  gamma_init_bias: -2.5
+
+training:
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+  optimizer: "adamw"
+  main_loss_type: "huber"
+  huber_delta: 1.0
