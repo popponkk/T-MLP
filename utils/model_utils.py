@@ -18,7 +18,7 @@ import optuna
 from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP,
+    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -39,6 +39,7 @@ MODEL_CARDS = {
     'dpg_cgr_tmlp': DPGCGRTMLP,
     'ggtm_tmlp': GGTMTMLP,
     'sgg_cgr_tmlp': SGGCGRTMLP,
+    'iggpl_cgr_tmlp': IGGPLCGRTMLP,
     'cgr_tmlp_v2': CGRTMLPV2,
     'cgr_tmlp_v3': CGRTMLPV3,
     'lar_tmlp': LARTMLP,
@@ -276,6 +277,12 @@ def make_baseline(
         )
     if model_name == 'sgg_cgr_tmlp':
         return SGGCGRTMLP(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
+        )
+    if model_name == 'iggpl_cgr_tmlp':
+        return IGGPLCGRTMLP(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset,
