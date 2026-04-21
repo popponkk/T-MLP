@@ -1,0 +1,35 @@
+model:
+  model_name: ggpl_tabm_cgr
+  use_ggpl_frontend: true
+  num_breakpoints: 8
+  emb_dim_per_feature: 4
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggpl_tabm_cgr_breakpoints"
+  learnable_breakpoints: true
+  use_numeric_proj: true
+  numeric_proj_dim: 256
+  numeric_proj_scale: 0.1
+
+  trunk_hidden_dim: 256
+  trunk_num_layers: 3
+  trunk_dropout: 0.1
+  cat_embedding_dim: 16
+
+  num_heads: 4
+  head_hidden_dim: 32
+  head_diversity_type: "independent_last_layer"
+  prediction_reduce: "mean"
+
+  use_cgr_refinement: true
+  safe_hidden_dim: 64
+  spec_hidden_dim: 64
+  spec_output_scale: 0.1
+  gamma_init_bias: -2.5
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  main_loss_type: "huber"
+  huber_delta: 1.0

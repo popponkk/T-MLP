@@ -39,3 +39,4 @@ from .dpg_cgr_tmlp import DPGCGRTMLP
 from .ggtm_tmlp import GGTMTMLP
 from .sgg_cgr_tmlp import SGGCGRTMLP
 from .iggpl_cgr_tmlp import IGGPLCGRTMLP
+from .ggpl_tabm_cgr import GGPLTabMCGR
