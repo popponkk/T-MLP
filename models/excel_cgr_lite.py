@@ -285,6 +285,7 @@ class ExcelCGRLite(TabModel):
         self.saved_model_config = model_config.copy()
         model_config.pop('model_name', None)
         model_config.pop('base_model', None)
+        model_config.pop('use_excelformer_backbone', None)
         model_config.setdefault('token_bias', True)
         model_config.setdefault('kv_compression', None)
         model_config.setdefault('kv_compression_sharing', None)
