@@ -1,0 +1,25 @@
+model:
+  model_name: lgbm_cgr_hybrid
+  use_lgbm_base: true
+  lgbm_cache_model: true
+  lgbm_params:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 31
+    n_jobs: -1
+    verbosity: -1
+    random_state: 42
+  refine_hidden_dim: 128
+  refine_num_layers: 2
+  safe_hidden_dim: 32
+  spec_hidden_dim: 32
+  spec_scale: 0.1
+  gamma_init_bias: -2.5
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
+  main_loss_type: "huber"
+  huber_delta: 1.0
+  lgbm_early_stopping_rounds: 50
