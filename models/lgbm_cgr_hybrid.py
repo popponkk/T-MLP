@@ -118,7 +118,7 @@ class LGBMCGRHybrid(TabModel):
         model_config = self.preproc_config(model_config)
         refine_input_dim = n_num_features + (0 if categories is None else len(categories))
         self.model = RefinementMLP(
-            input_dim=refine_input_dim,
+            input_dim=refine_input_dim + 1,
             refine_hidden_dim=model_config['refine_hidden_dim'],
             refine_num_layers=model_config['refine_num_layers'],
             safe_hidden_dim=model_config['safe_hidden_dim'],
