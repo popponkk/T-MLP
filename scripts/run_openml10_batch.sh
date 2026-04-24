@@ -21,6 +21,40 @@ LOG_DIR="${LOG_DIR:-$ROOT_DIR/logs/openml10_batches}"
 
 mkdir -p "$LOG_DIR"
 
+dataset_has_cat_features() {
+  local dataset="$1"
+  "$PYTHON_BIN" - <<PY
+import json
+from pathlib import Path
+info = Path("data/datasets") / "${dataset}" / "info.json"
+payload = json.loads(info.read_text(encoding="utf-8"))
+print(1 if payload.get("n_cat_features", 0) > 0 else 0)
+PY
+}
+
+should_skip_run() {
+  local model="$1"
+  local dataset="$2"
+  local has_cat
+  has_cat="$(dataset_has_cat_features "$dataset")"
+
+  if [[ "$has_cat" == "1" && ( "$model" == "excel-former" || "$model" == "excel_cgr_lite" ) ]]; then
+    echo "skip: ${model} does not support categorical features"
+    return 0
+  fi
+
+  if [[ "${SKIP_LARGE_TREE_MODELS:-1}" == "1" && "$dataset" == "openml_42728_airlines_depdelay_10m" ]]; then
+    case "$model" in
+      lightgbm|xgboost|catboost|lgbm_cgr_hybrid)
+        echo "skip: ${dataset} is too large for default tree-model batch settings"
+        return 0
+        ;;
+    esac
+  fi
+
+  return 1
+}
+
 DATASETS=(
   openml_422_topo_2_1
   openml_541_socmob
@@ -146,6 +180,11 @@ for dataset in "${DATASETS[@]}"; do
   for model in "${MODELS[@]}"; do
     log_file="${LOG_DIR}/${model}-${dataset}.log"
     echo "[RUN] model=${model} dataset=${dataset} gpu=${GPU}"
+
+    if skip_reason="$(should_skip_run "$model" "$dataset")"; then
+      echo "[SKIP] model=${model} dataset=${dataset} ${skip_reason}"
+      continue
+    fi
 
     "$PYTHON_BIN" main.py \
       --model "$model" \

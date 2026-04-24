@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+UNKNOWN_TOKEN = "__unknown__"
+
 
 def slugify(value: str) -> str:
     value = value.strip().lower()
@@ -67,11 +69,38 @@ def fit_fill_values(df: pd.DataFrame, num_cols: List[str], cat_cols: List[str]) 
         series = pd.to_numeric(df[col], errors="coerce")
         fill = float(series.median()) if not series.dropna().empty else 0.0
         num_fill[col] = fill
-    cat_fill = {col: "__missing__" for col in cat_cols}
+    # Use a single fallback token for both missing and unseen categories so
+    # validation/test splits never introduce train-unseen category ids.
+    cat_fill = {col: UNKNOWN_TOKEN for col in cat_cols}
     return num_fill, cat_fill
 
 
-def transform_frame(df: pd.DataFrame, num_cols: List[str], cat_cols: List[str], num_fill: dict, cat_fill: dict):
+def build_train_category_vocab(df: pd.DataFrame, cat_cols: List[str], cat_fill: dict) -> dict:
+    vocab = {}
+    for col in cat_cols:
+        series = df[col].astype("string").fillna(cat_fill[col]).astype(str)
+        vocab[col] = set(series.tolist())
+    return vocab
+
+
+def append_unknown_sentinel(train_df: pd.DataFrame, cat_cols: List[str], target_col: str) -> pd.DataFrame:
+    if not cat_cols or train_df.empty:
+        return train_df
+    sentinel = train_df.iloc[[0]].copy()
+    for col in cat_cols:
+        sentinel[col] = UNKNOWN_TOKEN
+    sentinel[target_col] = train_df.iloc[0][target_col]
+    return pd.concat([train_df, sentinel], ignore_index=True)
+
+
+def transform_frame(
+    df: pd.DataFrame,
+    num_cols: List[str],
+    cat_cols: List[str],
+    num_fill: dict,
+    cat_fill: dict,
+    train_vocab: dict | None = None,
+):
     x_num = None
     x_cat = None
     if num_cols:
@@ -80,7 +109,10 @@ def transform_frame(df: pd.DataFrame, num_cols: List[str], cat_cols: List[str], 
     if cat_cols:
         cat_df = df[cat_cols].copy()
         for col in cat_cols:
-            cat_df[col] = cat_df[col].astype("string").fillna(cat_fill[col]).astype(str)
+            series = cat_df[col].astype("string").fillna(cat_fill[col]).astype(str)
+            if train_vocab is not None:
+                series = series.where(series.isin(train_vocab[col]), cat_fill[col])
+            cat_df[col] = series
         x_cat = cat_df.to_numpy(dtype=np.str_)
     return x_num, x_cat
 
@@ -127,7 +159,7 @@ def convert_one(csv_path: Path, output_root: Path, train_ratio: float, seed: int
         if not overwrite:
             print(f"[skip] {dataset_name}: output already exists")
             return output_dir
-        for pattern in ["info.json", "X_num_*.npy", "X_cat_*.npy", "y_*.npy", "idx_*.npy"]:
+        for pattern in ["info.json", "X_num_*.npy", "X_cat_*.npy", "y_*.npy", "idx_*.npy", "cache__*.pickle"]:
             for path in output_dir.glob(pattern):
                 path.unlink()
 
@@ -135,21 +167,31 @@ def convert_one(csv_path: Path, output_root: Path, train_ratio: float, seed: int
     num_cols, cat_cols, target_col = get_column_groups(df, meta)
     indices = split_indices(len(df), train_ratio=train_ratio, seed=seed)
 
-    train_df = df.iloc[indices["train"]].reset_index(drop=True)
-    num_fill, cat_fill = fit_fill_values(train_df, num_cols, cat_cols)
+    raw_train_df = df.iloc[indices["train"]].reset_index(drop=True)
+    num_fill, cat_fill = fit_fill_values(raw_train_df, num_cols, cat_cols)
+    train_vocab = build_train_category_vocab(raw_train_df, cat_cols, cat_fill)
+    train_df = append_unknown_sentinel(raw_train_df, cat_cols, target_col)
 
     splits = {}
     for split_name, idx in indices.items():
-        split_df = df.iloc[idx].reset_index(drop=True)
-        X_num, X_cat = transform_frame(split_df, num_cols, cat_cols, num_fill, cat_fill)
+        split_df = train_df if split_name == "train" else df.iloc[idx].reset_index(drop=True)
+        X_num, X_cat = transform_frame(
+            split_df,
+            num_cols,
+            cat_cols,
+            num_fill,
+            cat_fill,
+            train_vocab=train_vocab,
+        )
         y = pd.to_numeric(split_df[target_col], errors="coerce")
         if y.isnull().any():
             raise ValueError(f"target column contains missing/non-numeric values in {csv_path.name}")
+        split_idx = idx if split_name != "train" else np.concatenate([idx, np.array([-1], dtype=np.int64)])
         splits[split_name] = {
             "X_num": X_num,
             "X_cat": X_cat,
             "y": y.to_numpy(dtype=np.float32),
-            "idx": idx,
+            "idx": split_idx,
         }
 
     write_dataset(output_dir, dataset_name, meta, num_cols, cat_cols, target_col, splits)
