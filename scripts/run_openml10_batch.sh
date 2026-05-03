@@ -64,8 +64,6 @@ DATASETS=(
   openml_42724_onlinenewspopularity
   openml_42726_abalone
   openml_42727_colleges
-  openml_42728_airlines_depdelay_10m
-  openml_42729_nyc_taxi_green_dec_2016
 )
 
 MODELS=()
