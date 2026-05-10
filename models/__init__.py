@@ -42,3 +42,4 @@ from .iggpl_cgr_tmlp import IGGPLCGRTMLP
 from .ggpl_tabm_cgr import GGPLTabMCGR
 from .excel_cgr_lite import ExcelCGRLite
 from .lgbm_cgr_hybrid import LGBMCGRHybrid
+from .ggpl_tmlp import GGPLTMLP
