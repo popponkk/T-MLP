@@ -19,7 +19,7 @@ from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP,
+    GGPLTMLP, GGPLTMLPMLPHead,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -30,6 +30,7 @@ MODEL_CARDS = {
     'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
     'ggpl_tmlp': GGPLTMLP,
+    'ggpl_tmlp_mlphead': GGPLTMLPMLPHead,
     'cgr_tmlp': CGRTMLP,
     'cgr_tmlp_stage2': CGRTMLPStage2,
     'nr_cgr_tmlp': NRCGRTMLP,
