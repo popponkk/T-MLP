@@ -296,6 +296,12 @@ class _GGPLTMLPGFG(nn.Module):
 
 
 class GGPLTMLPGFG(TabModel):
+    @staticmethod
+    def _is_disabled(value: ty.Optional[str]) -> bool:
+        return value is None or (
+            isinstance(value, str) and value.strip().lower() in {"", "none"}
+        )
+
     def __init__(
         self,
         model_config: dict,
@@ -303,8 +309,8 @@ class GGPLTMLPGFG(TabModel):
         categories: ty.Optional[ty.List[int]],
         n_labels: int,
         device: ty.Union[str, torch.device] = "cuda",
-        feat_gate: ty.Optional[str] = None,
-        pruning: ty.Optional[str] = None,
+        feat_gate: ty.Optional[str] = "__default__",
+        pruning: ty.Optional[str] = "__default__",
         dataset=None,
     ):
         super().__init__()
@@ -315,7 +321,18 @@ class GGPLTMLPGFG(TabModel):
             d_out=n_labels,
             **model_config,
         ).to(device)
-        if any([feat_gate, pruning]):
+        feat_gate = "xgb_dropout" if feat_gate == "__default__" else feat_gate
+        pruning = "mlp+sgu+layer" if pruning == "__default__" else pruning
+        feat_gate = None if self._is_disabled(feat_gate) else feat_gate
+        pruning = None if self._is_disabled(pruning) else pruning
+        if feat_gate == "xgb_dropout" and dataset is None:
+            raise ValueError(
+                "ggpl_tmlp_gfg with feat_gate='xgb_dropout' requires a dataset object"
+            )
+        self._gfg_enabled = bool(feat_gate or pruning)
+        self._train_path_logged = False
+        self._predict_path_logged = False
+        if self._gfg_enabled:
             self.sparser = make_sparser(
                 self.model, pruning, feat_gate, device, dataset
             )
@@ -517,8 +534,14 @@ class GGPLTMLPGFG(TabModel):
         def train_step(model, x_num, x_cat, y, sparser=None):
             start_time = time.time()
             if sparser is None:
+                if not self._train_path_logged:
+                    print("[ggpl_tmlp_gfg] train path: normal forward")
+                    self._train_path_logged = True
                 logits = model(x_num, x_cat)
             else:
+                if not self._train_path_logged:
+                    print("[ggpl_tmlp_gfg] train path: sparse forward with sparser")
+                    self._train_path_logged = True
                 logits = model._sp_forward(x_num, x_cat, sparser)
             used_time = time.time() - start_time
             return logits, used_time
@@ -555,8 +578,14 @@ class GGPLTMLPGFG(TabModel):
         def inference_step(model, x_num, x_cat, sparser=None):
             start_time = time.time()
             if sparser is None:
+                if not self._predict_path_logged:
+                    print("[ggpl_tmlp_gfg] predict path: normal forward")
+                    self._predict_path_logged = True
                 logits = model(x_num, x_cat)
             else:
+                if not self._predict_path_logged:
+                    print("[ggpl_tmlp_gfg] predict path: sparse forward with sparser")
+                    self._predict_path_logged = True
                 logits = model._sp_forward(x_num, x_cat, sparser)
             used_time = time.time() - start_time
             return logits, used_time

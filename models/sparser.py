@@ -445,7 +445,17 @@ class Sparser(nn.Module):
         # target model args
         n_layers = n_layers or len(model.layers)
         n_tokens = n_tokens or model.tokenizer.n_tokens
-        d_token = d_token or model.tokenizer.weight.shape[1]
+        if d_token is None:
+            if hasattr(model.tokenizer, 'weight'):
+                d_token = model.tokenizer.weight.shape[1]
+            elif hasattr(model.tokenizer, 'd_token'):
+                d_token = model.tokenizer.d_token
+            elif hasattr(model.tokenizer, 'cls_token'):
+                d_token = model.tokenizer.cls_token.shape[0]
+            else:
+                raise AttributeError(
+                    'tokenizer must expose token dimension via weight, d_token, or cls_token'
+                )
         d_hidden = d_hidden or model.d_ffn
 
         # learnable parameter mask (global, CoFi)
