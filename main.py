@@ -48,7 +48,10 @@ if args.output_suffix:
     output_dir = output_dir.replace(f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1)
 # dataset
 print('preparing dataset: ', args.dataset)
-append_ids = args.model == 'tmlp' and args.feat_gate == 'xgb_dropout'
+append_ids = (
+    args.feat_gate == 'xgb_dropout'
+    and args.model in ['tmlp', 'ggpl_tmlp_gfg']
+)
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
     seed=args.seed, add_ids=append_ids,
