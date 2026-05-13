@@ -557,7 +557,16 @@ class XGBDropout(nn.Module):
         except Exception:
             base_score = None
         if base_score is None:
-            return
+            try:
+                base_score = self.gbdt.get_booster().save_config()
+            except Exception:
+                return
+            try:
+                import json
+                config = json.loads(base_score)
+                base_score = config['learner']['learner_model_param']['base_score']
+            except Exception:
+                return
         if isinstance(base_score, str):
             normalized = base_score.strip()
             if normalized.startswith('[') and normalized.endswith(']'):
@@ -572,6 +581,10 @@ class XGBDropout(nn.Module):
             except (TypeError, ValueError):
                 return
         self.gbdt.set_params(base_score=float(base_score))
+        try:
+            self.gbdt.get_booster().set_param('base_score', f'{float(base_score)}')
+        except Exception:
+            pass
 
     def fetch_gbdt(self, save_path, dataset):
         """Fit a tree model"""
