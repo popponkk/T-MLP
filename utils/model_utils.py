@@ -392,6 +392,11 @@ def make_baseline(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset)
+    if model_name == 'ggpl_tmlp_gfg':
+        return GGPLTMLPGFG(
+            model_config=model_config,
+            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
+            feat_gate=feat_gate, pruning=pruning, dataset=dataset)
     return MODEL_CARDS[model_name](
         model_config=model_config, 
         n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device)
