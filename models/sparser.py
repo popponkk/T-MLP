@@ -530,16 +530,29 @@ class XGBDropout(nn.Module):
         save_path = save_path or 'xgboost_cache' # model save path
         default_path = f'{save_path}/{dataset.n_num_features}-{dataset.n_cat_features}-{dataset.size(None)}.pt'
         self.drop_rate = drop_rate
+        self.n_total_features = dataset.n_num_features + dataset.n_cat_features
+        self.use_hummingbird = False
         if os.path.exists(default_path):
             # no need to fit xgboost and put to the cuda
             self.cache_frequency(dataset, save_path)
         else:
             self.gbdt = self.fetch_gbdt(save_path, dataset) # fit a tree model with the dataset
-            self.to_tensor() # tensorize the fitted tree model
+            try:
+                self.to_tensor() # tensorize the fitted tree model
+                self.use_hummingbird = True
+            except Exception as err:
+                print(f'hummingbird conversion failed, fallback to native xgboost traversal: {err}')
+                self._prepare_native_traversal()
             # self.sample_feature_frequency: torch.Tensor = None
             self.cache_frequency(dataset, save_path) # cache per-sample gbdt feature frequency
             assert len(self.sample_feature_frequency) == dataset.size(None)
-            del self.operator, self.pt_gbdt, self.gbdt
+            if hasattr(self, 'operator'):
+                del self.operator
+            if hasattr(self, 'pt_gbdt'):
+                del self.pt_gbdt
+            if hasattr(self, 'leaf_feature_counts'):
+                del self.leaf_feature_counts
+            del self.gbdt
             torch.cuda.empty_cache()
             gc.collect()
     
@@ -585,6 +598,67 @@ class XGBDropout(nn.Module):
             self.gbdt.get_booster().set_param('base_score', f'{float(base_score)}')
         except Exception:
             pass
+
+    @staticmethod
+    def _parse_tree_node_ref(value):
+        if value is None or (isinstance(value, float) and np.isnan(value)):
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            if '-' in value:
+                value = value.split('-')[-1]
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _parse_feature_name(feature):
+        if feature is None:
+            return None
+        if isinstance(feature, float) and np.isnan(feature):
+            return None
+        feature = str(feature).strip()
+        if feature.lower() == 'leaf':
+            return None
+        if feature.startswith('f'):
+            feature = feature[1:]
+        try:
+            return int(feature)
+        except ValueError:
+            return None
+
+    def _prepare_native_traversal(self):
+        booster = self.gbdt.get_booster()
+        tree_df = booster.trees_to_dataframe()
+        self.leaf_feature_counts = []
+        for tree_idx in sorted(tree_df['Tree'].unique().tolist()):
+            rows = tree_df[tree_df['Tree'] == tree_idx]
+            parent = {}
+            split_feature = {}
+            leaves = []
+            for _, row in rows.iterrows():
+                node_id = int(row['Node'])
+                feat_idx = self._parse_feature_name(row['Feature'])
+                if feat_idx is None:
+                    leaves.append(node_id)
+                    continue
+                split_feature[node_id] = feat_idx
+                for key in ['Yes', 'No', 'Missing']:
+                    child = self._parse_tree_node_ref(row[key])
+                    if child is not None:
+                        parent[child] = node_id
+            leaf_map = {}
+            for leaf in leaves:
+                counts = np.zeros(self.n_total_features, dtype=np.int64)
+                cur = leaf
+                while cur in parent:
+                    cur = parent[cur]
+                    feat_idx = split_feature.get(cur)
+                    if feat_idx is not None and 0 <= feat_idx < self.n_total_features:
+                        counts[feat_idx] += 1
+                leaf_map[int(leaf)] = counts
+            self.leaf_feature_counts.append(leaf_map)
 
     def fetch_gbdt(self, save_path, dataset):
         """Fit a tree model"""
@@ -694,6 +768,19 @@ class XGBDropout(nn.Module):
         # fast gbdt feature frequency access using sample ids
         if sample_ids is not None:
             return self.sample_feature_frequency[sample_ids], f
+        if not getattr(self, 'use_hummingbird', False):
+            leaf_indices = self.gbdt.apply(x.detach().cpu().numpy())
+            leaf_indices = np.asarray(leaf_indices).astype(np.int64)
+            if leaf_indices.ndim == 1:
+                leaf_indices = leaf_indices.reshape(-1, 1)
+            tot_frequency = np.zeros((b, f), dtype=np.int64)
+            for tree_idx, leaf_map in enumerate(self.leaf_feature_counts):
+                tree_leaf_ids = leaf_indices[:, tree_idx]
+                for row_idx, leaf_id in enumerate(tree_leaf_ids):
+                    counts = leaf_map.get(int(leaf_id))
+                    if counts is not None:
+                        tot_frequency[row_idx] += counts[:f]
+            return torch.from_numpy(tot_frequency).to(x.device), f
         # total freqency count / sample
         # TODO: count for each tree group of one class
         tot_frequency = torch.zeros(b, f).long().cuda()

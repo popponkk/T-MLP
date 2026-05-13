@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enabled GFG reference run.
+# Enabled GFG reference run with non-tree shared feature gate.
 python main.py \
   --model ggpl_tmlp_gfg \
   --dataset california \
@@ -9,7 +9,7 @@ python main.py \
   --gpu 0 \
   --batch_size 32 \
   --lr 1e-5 \
-  --feat_gate xgb_dropout \
+  --feat_gate shared \
   --pruning mlp+sgu+layer
 
 # Disabled GFG control run.

@@ -309,8 +309,8 @@ class GGPLTMLPGFG(TabModel):
         categories: ty.Optional[ty.List[int]],
         n_labels: int,
         device: ty.Union[str, torch.device] = "cuda",
-        feat_gate: ty.Optional[str] = None,
-        pruning: ty.Optional[str] = None,
+        feat_gate: ty.Optional[str] = "__default__",
+        pruning: ty.Optional[str] = "__default__",
         dataset=None,
     ):
         super().__init__()
@@ -321,6 +321,8 @@ class GGPLTMLPGFG(TabModel):
             d_out=n_labels,
             **model_config,
         ).to(device)
+        feat_gate = "shared" if feat_gate == "__default__" else feat_gate
+        pruning = "mlp+sgu+layer" if pruning == "__default__" else pruning
         feat_gate = None if self._is_disabled(feat_gate) else feat_gate
         pruning = None if self._is_disabled(pruning) else pruning
         if feat_gate == "xgb_dropout" and dataset is None:
