@@ -545,9 +545,33 @@ class XGBDropout(nn.Module):
     
     def to_tensor(self):
         """convert sklearn-format tree models into Hummingbird class"""
+        self._normalize_xgb_base_score()
         self.pt_gbdt = convert(self.gbdt, 'pytorch')
         self.pt_gbdt.to('cuda')
         self.operator: PerfectTreeTraversalGBDTImpl = self.pt_gbdt.model._operators[0]
+
+    def _normalize_xgb_base_score(self):
+        """Hummingbird expects XGBoost base_score to be a plain float."""
+        try:
+            base_score = self.gbdt.get_xgb_params().get('base_score', None)
+        except Exception:
+            base_score = None
+        if base_score is None:
+            return
+        if isinstance(base_score, str):
+            normalized = base_score.strip()
+            if normalized.startswith('[') and normalized.endswith(']'):
+                normalized = normalized[1:-1].strip()
+            try:
+                base_score = float(normalized)
+            except ValueError:
+                return
+        elif not isinstance(base_score, (float, int)):
+            try:
+                base_score = float(base_score)
+            except (TypeError, ValueError):
+                return
+        self.gbdt.set_params(base_score=float(base_score))
 
     def fetch_gbdt(self, save_path, dataset):
         """Fit a tree model"""
