@@ -631,7 +631,7 @@ class XGBDropout(nn.Module):
     def _prepare_native_traversal(self):
         booster = self.gbdt.get_booster()
         tree_df = booster.trees_to_dataframe()
-        self.leaf_feature_counts = []
+        self.leaf_feature_counts = {}
         for tree_idx in sorted(tree_df['Tree'].unique().tolist()):
             rows = tree_df[tree_df['Tree'] == tree_idx]
             parent = {}
@@ -658,7 +658,7 @@ class XGBDropout(nn.Module):
                     if feat_idx is not None and 0 <= feat_idx < self.n_total_features:
                         counts[feat_idx] += 1
                 leaf_map[int(leaf)] = counts
-            self.leaf_feature_counts.append(leaf_map)
+            self.leaf_feature_counts[int(tree_idx)] = leaf_map
 
     def fetch_gbdt(self, save_path, dataset):
         """Fit a tree model"""
@@ -774,8 +774,13 @@ class XGBDropout(nn.Module):
             if leaf_indices.ndim == 1:
                 leaf_indices = leaf_indices.reshape(-1, 1)
             tot_frequency = np.zeros((b, f), dtype=np.int64)
-            for tree_idx, leaf_map in enumerate(self.leaf_feature_counts):
-                tree_leaf_ids = leaf_indices[:, tree_idx]
+            tree_ids = sorted(self.leaf_feature_counts.keys())
+            usable_trees = min(len(tree_ids), leaf_indices.shape[1])
+            if usable_trees < len(tree_ids):
+                tree_ids = tree_ids[:usable_trees]
+            for col_idx, tree_idx in enumerate(tree_ids):
+                leaf_map = self.leaf_feature_counts[tree_idx]
+                tree_leaf_ids = leaf_indices[:, col_idx]
                 for row_idx, leaf_id in enumerate(tree_leaf_ids):
                     counts = leaf_map.get(int(leaf_id))
                     if counts is not None:
