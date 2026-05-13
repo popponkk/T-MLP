@@ -555,7 +555,7 @@ class XGBDropout(nn.Module):
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
         save_path = f'{save_path}/{dataset.n_num_features}-{dataset.n_cat_features}-{dataset.size(None)}.model'
-        from model_utils import load_config_from_file
+        from utils.model_utils import load_config_from_file
         configs = load_config_from_file('configs/default/xgboost.yaml')
         # change configs to prevent OOM for large datasets
         # if dataset.n_features < 32:
