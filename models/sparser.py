@@ -6,6 +6,7 @@ import os
 import gc
 import pdb
 import math
+import inspect
 import logging
 from typing import List, Optional
 import numpy as np
@@ -591,11 +592,20 @@ class XGBDropout(nn.Module):
 
         if not os.path.exists(save_path):
             print('fitting xgboost with default configs')
+            fit_kwargs = dict(configs['fit'])
+            fit_signature = inspect.signature(model.fit)
+            if 'early_stopping_rounds' in fit_kwargs and 'early_stopping_rounds' not in fit_signature.parameters:
+                early_stopping_rounds = fit_kwargs.pop('early_stopping_rounds')
+                try:
+                    model.set_params(early_stopping_rounds=early_stopping_rounds)
+                    print('xgboost fit() does not accept early_stopping_rounds; moved it to model params')
+                except (ValueError, TypeError):
+                    print('xgboost estimator does not accept early_stopping_rounds; disabling early stop for XGBDropout cache fit')
             model.fit(
                 Xs['train'],
                 ys['train'],
                 eval_set=[(Xs['val'], ys['val'])],
-                **configs['fit'])
+                **fit_kwargs)
             model.save_model(save_path)
         else:
             print('loading saved model')
