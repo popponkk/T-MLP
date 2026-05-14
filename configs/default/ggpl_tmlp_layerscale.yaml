@@ -1,0 +1,20 @@
+model:
+  model_name: ggpl_tmlp_layerscale
+  base_model: tmlp
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  num_breakpoints: 8
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggpl_tmlp_layerscale_breakpoints"
+  learnable_breakpoints: true
+  layer_scale_init: 1.0e-2
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"
