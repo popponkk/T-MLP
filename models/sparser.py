@@ -459,8 +459,8 @@ class Sparser(nn.Module):
                 )
         d_hidden = d_hidden or model.d_ffn
 
-        # learnable parameter mask (global, CoFi)
-        if pruning_type != 'none':
+        # Treat both None and the string 'none' as disabled pruning.
+        if pruning_type not in [None, 'none']:
             self.l0_module = L0CoFi(
                 n_layers, d_token, d_hidden, 
                 target_sparsity=target_sparsity, 
@@ -470,7 +470,7 @@ class Sparser(nn.Module):
             self.l0_module = None
         
         # feature gating
-        if feature_gate != 'none':
+        if feature_gate not in [None, 'none']:
             if feature_gate != 'xgb_dropout':
                 self.feature_gate = MultiHeadFeatureGate(
                     n_tokens, d_token, stype=feature_gate
