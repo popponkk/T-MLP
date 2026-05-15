@@ -45,6 +45,7 @@ from .lgbm_cgr_hybrid import LGBMCGRHybrid
 from .ggpl_tmlp import GGPLTMLP
 from .ggpl_tmlp_layerscale import GGPLTMLPLayerScale
 from .ggpl_tmlp_sgurefine import GGPLTMLPSGURefine
+from .ggpl_tmlp_tokchan import GGPLTMLPTokChan
 from .ggpl_tmlp_mlphead import GGPLTMLPMLPHead
 from .ggpl_tmlp_gluhead import GGPLTMLPGLUHead
 from .ggpl_tmlp_gfg import GGPLTMLPGFG
