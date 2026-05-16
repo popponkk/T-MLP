@@ -47,6 +47,7 @@ from .ggpl_tmlp_layerscale import GGPLTMLPLayerScale
 from .ggpl_tmlp_sgurefine import GGPLTMLPSGURefine
 from .ggpl_tmlp_tokchan import GGPLTMLPTokChan
 from .ggpl_tmlp_tokchan_lite import GGPLTMLPTokChanLite
+from .ggpl_tmlp_bpfilm import GGPLTMLPBPFiLM
 from .ggpl_tmlp_mlphead import GGPLTMLPMLPHead
 from .ggpl_tmlp_gluhead import GGPLTMLPGLUHead
 from .ggpl_tmlp_gfg import GGPLTMLPGFG
