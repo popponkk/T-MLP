@@ -1,0 +1,27 @@
+model:
+  model_name: ggpl_tmlp_tokchan_bpgate
+  base_model: ggpl_tmlp_tokchan
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  num_breakpoints: 8
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggpl_tmlp_tokchan_bpgate_breakpoints"
+  learnable_breakpoints: true
+  d_channel: null
+  channel_scale_init: 0.01
+  bp_gate_ratio: 0.25
+  bp_gate_dropout: 0.0
+  bp_gate_alpha_init: 0.001
+  bp_gate_zero_init: true
+  bp_gate_all_layers: false
+  bp_gate_start_layer: null
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"

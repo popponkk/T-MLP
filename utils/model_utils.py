@@ -19,7 +19,7 @@ from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
+    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -35,6 +35,7 @@ MODEL_CARDS = {
     'ggpl_tmlp_tokchan': GGPLTMLPTokChan,
     'ggpl_tmlp_tokchan_lite': GGPLTMLPTokChanLite,
     'ggpl_tmlp_bpfilm': GGPLTMLPBPFiLM,
+    'ggpl_tmlp_tokchan_bpgate': GGPLTMLPTokChanBPGate,
     'ggpl_tmlp_mlphead': GGPLTMLPMLPHead,
     'ggpl_tmlp_gluhead': GGPLTMLPGLUHead,
     'ggpl_tmlp_gfg': GGPLTMLPGFG,
