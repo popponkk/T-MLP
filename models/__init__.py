@@ -50,6 +50,7 @@ from .ggpl_tmlp_tokchan_lite import GGPLTMLPTokChanLite
 from .ggpl_tmlp_bpfilm import GGPLTMLPBPFiLM
 from .ggpl_tmlp_tokchan_bpgate import GGPLTMLPTokChanBPGate
 from .ggpl_tmlp_slimtok import GGPLTMLPSlimTok
+from .ggpl_tmlp_crossmix import GGPLTMLPCrossMix
 from .ggpl_tmlp_mlphead import GGPLTMLPMLPHead
 from .ggpl_tmlp_gluhead import GGPLTMLPGLUHead
 from .ggpl_tmlp_gfg import GGPLTMLPGFG
