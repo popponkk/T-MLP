@@ -9,3 +9,6 @@ __pycache__/
 !/data/__init__.py
 !/data/env.py
 !/data/processor.py
+
+artifacts/
+xgboost_cache/

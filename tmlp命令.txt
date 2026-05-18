@@ -6,7 +6,9 @@ codex resume 019d198d-a39a-7bc3-b32e-e1068381b2bf      (MSI)
 conda activate tmlp
 
 csv转数据集：
-python scripts/csv_to_regression_dataset.py --csv data/csvs/ramspeed.csv --name ramspeed
+python scripts/csv_to_regression_dataset.py --csv data/csvs/hpcg_hpgmg_mixed.csv --name hpcg_hpgmg_mixed
+
+python scripts/import_split_csv_dataset.py --source-dir data/excelformer_regression_csv/Brazilian_houses --name Brazilian_houses
 
 csv转混合数据集
 python scripts/csv_to_regression_dataset_cross_workload.py \
