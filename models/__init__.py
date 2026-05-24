@@ -51,6 +51,7 @@ from .ggpl_tmlp_bpfilm import GGPLTMLPBPFiLM
 from .ggpl_tmlp_tokchan_bpgate import GGPLTMLPTokChanBPGate
 from .ggpl_tmlp_slimtok import GGPLTMLPSlimTok
 from .ggpl_tmlp_dlr_slimtok import GGPLTMLPDLRSlimTok
+from .ggpl_tmlp_osc_slimtok import GGPLTMLPOSCSlimTok
 from .ggpl_tmlp_crossmix import GGPLTMLPCrossMix
 from .ggpl_tmlp_setmix import GGPLTMLPSetMix
 from .ggpl_tmlp_butterflytok import GGPLTMLPButterflyTok
