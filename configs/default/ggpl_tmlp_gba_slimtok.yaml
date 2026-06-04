@@ -1,0 +1,29 @@
+model:
+  model_name: ggpl_tmlp_gba_slimtok
+  base_model: ggpl_tmlp
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  num_breakpoints: 8
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggpl_tmlp_gba_slimtok_breakpoints"
+  learnable_breakpoints: true
+  slimtok_rank_ratio: 0.25
+  slimtok_min_rank: 4
+  slimtok_rank: null
+  slimtok_channel_ratio: 2.0
+  slimtok_dropout: null
+  slimtok_layerscale_init: 1.0e-2
+  slimtok_activation: "gelu"
+  gba_n_heads: 4
+  gba_attn_bias_scale_init: 0.1
+  gba_attention_bias_cache_dir: "artifacts/ggpl_tmlp_gba_slimtok_attention_bias"
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"

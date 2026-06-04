@@ -19,7 +19,7 @@ from models import (
     MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
+    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -41,6 +41,7 @@ MODEL_CARDS = {
     'ggpl_tmlp_osc_slimtok': GGPLTMLPOSCSlimTok,
     'ggpl_tmlp_anchor_slimtok': GGPLTMLPAnchorSlimTok,
     'ggpl_tmlp_lir_slimtok': GGPLTMLPLIRSlimTok,
+    'ggpl_tmlp_gba_slimtok': GGPLTMLPGBASlimTok,
     'ggpl_tmlp_crossmix': GGPLTMLPCrossMix,
     'ggpl_tmlp_setmix': GGPLTMLPSetMix,
     'ggpl_tmlp_butterflytok': GGPLTMLPButterflyTok,
