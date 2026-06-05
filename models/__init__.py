@@ -55,6 +55,7 @@ from .ggpl_tmlp_osc_slimtok import GGPLTMLPOSCSlimTok
 from .ggpl_tmlp_anchor_slimtok import GGPLTMLPAnchorSlimTok
 from .ggpl_tmlp_lir_slimtok import GGPLTMLPLIRSlimTok
 from .ggpl_tmlp_gba_slimtok import GGPLTMLPGBASlimTok
+from .ggpl_tmlp_attn_slimtok import GGPLTMLPAttnSlimTok
 from .ggpl_tmlp_crossmix import GGPLTMLPCrossMix
 from .ggpl_tmlp_setmix import GGPLTMLPSetMix
 from .ggpl_tmlp_butterflytok import GGPLTMLPButterflyTok
