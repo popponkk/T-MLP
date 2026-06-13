@@ -1,4 +1,5 @@
 # %%
+import math
 import typing as ty
 
 import torch
@@ -39,7 +40,9 @@ class FNetSlimTokBlock(nn.Module):
         super().__init__()
         self.token_norm = nn.LayerNorm(d_token)
         self.channel_norm = nn.LayerNorm(d_token)
-        self.fnet_out = nn.Linear(d_token, d_token) if fnet_use_out_proj else nn.Identity()
+        self.fnet_out = (
+            nn.Linear(d_token, d_token) if fnet_use_out_proj else nn.Identity()
+        )
         self.channel_down = nn.Linear(d_token, channel_hidden)
         self.channel_up = nn.Linear(channel_hidden, d_token)
         self.dropout = nn.Dropout(dropout)
@@ -58,17 +61,27 @@ class FNetSlimTokBlock(nn.Module):
             raise ValueError(
                 f"Unsupported fnet_mix_dim: {self.fnet_mix_dim}. Only 'token' is supported."
             )
+        self.register_buffer("token_mixer", self._build_dct_token_mixer(self.n_tokens))
+        if self.fnet_use_2d_fft:
+            self.register_buffer("channel_mixer", self._build_dct_token_mixer(self.d_token))
+
+    def _build_dct_token_mixer(self, n_tokens: int) -> Tensor:
+        mixer = torch.empty(n_tokens, n_tokens, dtype=torch.float32)
+        scale0 = math.sqrt(1.0 / n_tokens)
+        scale = math.sqrt(2.0 / n_tokens)
+        for k in range(n_tokens):
+            alpha = scale0 if k == 0 else scale
+            for n in range(n_tokens):
+                mixer[k, n] = alpha * math.cos(math.pi * (n + 0.5) * k / n_tokens)
+        return mixer
 
     def forward(self, x: Tensor) -> Tensor:
         x_res = x
         h = self.token_norm(x)
 
+        h = torch.matmul(self.token_mixer.unsqueeze(0).to(h.dtype), h)
         if self.fnet_use_2d_fft:
-            h = torch.fft.fft(h, dim=1, norm=self.fnet_norm)
-            h = torch.fft.fft(h, dim=2, norm=self.fnet_norm)
-            h = h.real
-        else:
-            h = torch.fft.fft(h, dim=1, norm=self.fnet_norm).real
+            h = torch.matmul(h, self.channel_mixer.t().to(h.dtype))
 
         h = self.fnet_out(h)
         h = self.dropout(h)
