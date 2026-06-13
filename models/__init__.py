@@ -63,6 +63,7 @@ from .ggpl_tmlp_amix_graph_slimtok import GGPLTMLPAMixGraphSlimTok
 from .ggpl_tmlp_sparse_graph_slimtok import GGPLTMLPSparseGraphSlimTok
 from .ggpl_tmlp_graph_readout_slimtok import GGPLTMLPGraphReadoutSlimTok
 from .ggpl_tmlp_safe_graph_readout_slimtok import GGPLTMLPSafeGraphReadoutSlimTok
+from .ggpl_tmlp_pmu_graph_slimtok import GGPLTMLPPMUGraphSlimTok
 from .ggpl_tmlp_crossmix import GGPLTMLPCrossMix
 from .ggpl_tmlp_setmix import GGPLTMLPSetMix
 from .ggpl_tmlp_butterflytok import GGPLTMLPButterflyTok
