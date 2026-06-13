@@ -50,6 +50,7 @@ from .ggpl_tmlp_tokchan_lite import GGPLTMLPTokChanLite
 from .ggpl_tmlp_bpfilm import GGPLTMLPBPFiLM
 from .ggpl_tmlp_tokchan_bpgate import GGPLTMLPTokChanBPGate
 from .ggpl_tmlp_slimtok import GGPLTMLPSlimTok
+from .ggpl_tmlp_fnet_slimtok import GGPLTMLPFNetSlimTok
 from .ggpl_tmlp_dlr_slimtok import GGPLTMLPDLRSlimTok
 from .ggpl_tmlp_osc_slimtok import GGPLTMLPOSCSlimTok
 from .ggpl_tmlp_anchor_slimtok import GGPLTMLPAnchorSlimTok
