@@ -61,6 +61,7 @@ from .ggpl_tmlp_ssm_slimtok import GGPLTMLPSSMSlimTok
 from .ggpl_tmlp_tabm_slimtok import GGPLTMLPTabMSlimTok
 from .ggpl_tmlp_graph_slimtok import GGPLTMLPGraphSlimTok
 from .ggpl_tmlp_swap_graph_slimtok import GGPLTMLPSwapGraphSlimTok
+from .ggpl_tmlp_dual_graph_slimtok import GGPLTMLPDualGraphSlimTok
 from .ggpl_tmlp_amix_graph_slimtok import GGPLTMLPAMixGraphSlimTok
 from .ggpl_tmlp_sparse_graph_slimtok import GGPLTMLPSparseGraphSlimTok
 from .ggpl_tmlp_graph_readout_slimtok import GGPLTMLPGraphReadoutSlimTok
