@@ -60,6 +60,11 @@ from .ggpl_tmlp_attn_slimtok import GGPLTMLPAttnSlimTok
 from .ggpl_tmlp_ssm_slimtok import GGPLTMLPSSMSlimTok
 from .ggpl_tmlp_tabm_slimtok import GGPLTMLPTabMSlimTok
 from .ggpl_tmlp_graph_slimtok import GGPLTMLPGraphSlimTok
+from .ggpl_tmlp_graph_slimtok_ablation import (
+    GGPLTMLPGraphSlimTokNoBlock,
+    GGPLTMLPGraphSlimTokNoChannel,
+    GGPLTMLPGraphSlimTokNoGraph,
+)
 from .ggpl_tmlp_swap_graph_slimtok import GGPLTMLPSwapGraphSlimTok
 from .ggpl_tmlp_dual_graph_slimtok import GGPLTMLPDualGraphSlimTok
 from .ggpl_tmlp_amix_graph_slimtok import GGPLTMLPAMixGraphSlimTok
