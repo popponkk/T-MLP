@@ -12,7 +12,6 @@ model:
   breakpoint_fallback: "quantile"
   breakpoint_cache_dir: "artifacts/ggpl_tmlp_graph_slimtok_no_channel_breakpoints"
   learnable_breakpoints: true
-  slimtok_channel_ratio: 2.0
   slimtok_dropout: null
   slimtok_layerscale_init: 1.0e-2
   slimtok_activation: "gelu"

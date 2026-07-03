@@ -22,7 +22,7 @@ def _resolve_activation(name: str):
 
 
 class GraphSlimTokNoGraphBlock(nn.Module):
-    """Channel mixing only ablation block."""
+    """Ablation block that keeps only channel mixing."""
 
     def __init__(
         self,
@@ -53,7 +53,7 @@ class GraphSlimTokNoGraphBlock(nn.Module):
 
 
 class GraphSlimTokNoChannelBlock(nn.Module):
-    """Graph token mixing only ablation block."""
+    """Ablation block that keeps only graph token mixing."""
 
     def __init__(
         self,
@@ -92,7 +92,10 @@ class GraphSlimTokNoChannelBlock(nn.Module):
         dynamic_logits = torch.matmul(z, z.transpose(1, 2)) / math.sqrt(
             self.graph_dynamic_rank
         )
-        logits = self.graph_logits.unsqueeze(0) + self.graph_dynamic_scale * dynamic_logits
+        logits = (
+            self.graph_logits.unsqueeze(0)
+            + self.graph_dynamic_scale * dynamic_logits
+        )
         temperature = max(self.graph_temperature, 1e-6)
         a = torch.softmax(logits / temperature, dim=-1)
 
@@ -180,7 +183,6 @@ class _GGPLTMLPGraphSlimTokNoChannel(nn.Module):
         residual_dropout: float | None = 0.1,
         num_breakpoints: int = 8,
         learnable_breakpoints: bool = True,
-        slimtok_channel_ratio: float = 2.0,
         slimtok_dropout: ty.Optional[float] = None,
         slimtok_layerscale_init: float = 1e-2,
         slimtok_activation: str = "gelu",
@@ -319,6 +321,10 @@ class GGPLTMLPGraphSlimTokNoGraph(GGPLTMLP):
         model_config.pop("slimtok_rank_ratio", None)
         model_config.pop("slimtok_min_rank", None)
         model_config.pop("slimtok_rank", None)
+        model_config.pop("graph_dynamic_rank", None)
+        model_config.pop("graph_temperature", None)
+        model_config.pop("graph_dynamic_scale_init", None)
+        model_config.pop("graph_self_loop_init", None)
         model_config.setdefault("n_layers", 1)
         model_config.setdefault("d_token", 1024)
         model_config.setdefault("token_bias", True)
@@ -331,10 +337,6 @@ class GGPLTMLPGraphSlimTokNoGraph(GGPLTMLP):
         model_config.setdefault("slimtok_dropout", None)
         model_config.setdefault("slimtok_layerscale_init", 1e-2)
         model_config.setdefault("slimtok_activation", "gelu")
-        model_config.pop("graph_dynamic_rank", None)
-        model_config.pop("graph_temperature", None)
-        model_config.pop("graph_dynamic_scale_init", None)
-        model_config.pop("graph_self_loop_init", None)
         return model_config
 
 
@@ -456,6 +458,10 @@ class GGPLTMLPGraphSlimTokNoBlock(GGPLTMLP):
         model_config.pop("graph_temperature", None)
         model_config.pop("graph_dynamic_scale_init", None)
         model_config.pop("graph_self_loop_init", None)
+        model_config.pop("n_layers", None)
+        model_config.pop("d_ffn_factor", None)
+        model_config.pop("ffn_dropout", None)
+        model_config.pop("residual_dropout", None)
         model_config.setdefault("d_token", 1024)
         model_config.setdefault("token_bias", True)
         model_config.setdefault("num_breakpoints", 8)
