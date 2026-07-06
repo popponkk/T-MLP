@@ -21,6 +21,86 @@ def _resolve_activation(name: str):
     raise ValueError(f"Unsupported slimtok activation: {name}")
 
 
+class PlainTMLPTokenizer(nn.Module):
+    """Plain TMLP-style tokenizer with [CLS] + numeric + categorical tokens."""
+
+    category_offsets: ty.Optional[Tensor]
+
+    def __init__(
+        self,
+        d_numerical: int,
+        categories: ty.Optional[ty.List[int]],
+        d_token: int,
+        bias: bool,
+    ) -> None:
+        super().__init__()
+        self.d_numerical = int(d_numerical)
+        self.d_token = int(d_token)
+
+        if self.d_numerical > 0:
+            self.weight = nn.Parameter(torch.empty(self.d_numerical, d_token))
+        else:
+            self.weight = None
+
+        if categories is None:
+            d_bias = self.d_numerical
+            self.category_offsets = None
+            self.category_embeddings = None
+        else:
+            d_bias = self.d_numerical + len(categories)
+            category_offsets = torch.tensor([0] + categories[:-1]).cumsum(0)
+            self.register_buffer("category_offsets", category_offsets)
+            self.category_embeddings = nn.Embedding(sum(categories), d_token)
+            nn.init.kaiming_uniform_(self.category_embeddings.weight, a=math.sqrt(5))
+
+        self.cls_token = nn.Parameter(torch.empty(d_token))
+        self.bias = nn.Parameter(torch.empty(d_bias, d_token)) if bias else None
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        nn.init.kaiming_uniform_(self.cls_token.unsqueeze(0), a=math.sqrt(5))
+        if self.weight is not None:
+            nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            nn.init.kaiming_uniform_(self.bias, a=math.sqrt(5))
+
+    @property
+    def n_tokens(self) -> int:
+        return 1 + self.d_numerical + (
+            0 if self.category_offsets is None else len(self.category_offsets)
+        )
+
+    def _numeric_tokens(self, x_num: ty.Optional[Tensor]) -> ty.Optional[Tensor]:
+        if self.weight is None or x_num is None:
+            return None
+        return x_num.unsqueeze(-1) * self.weight.unsqueeze(0)
+
+    def forward(self, x_num: ty.Optional[Tensor], x_cat: ty.Optional[Tensor]) -> Tensor:
+        x_some = x_num if x_num is not None else x_cat
+        assert x_some is not None
+
+        cls = self.cls_token.unsqueeze(0).unsqueeze(0).expand(len(x_some), 1, -1)
+        pieces = [cls]
+
+        numeric_tokens = self._numeric_tokens(x_num)
+        if numeric_tokens is not None:
+            pieces.append(numeric_tokens)
+
+        if x_cat is not None:
+            pieces.append(
+                self.category_embeddings(x_cat + self.category_offsets[None])
+            )
+
+        x = torch.cat(pieces, dim=1)
+
+        if self.bias is not None:
+            bias = torch.cat(
+                [torch.zeros(1, self.bias.shape[1], device=x.device), self.bias], dim=0
+            )
+            x = x + bias.unsqueeze(0)
+        return x
+
+
 class GraphSlimTokBlock(nn.Module):
     """Feature relation graph propagation followed by channel mixing."""
 
@@ -171,6 +251,83 @@ class _GGPLTMLPGraphSlimTok(nn.Module):
         return x.squeeze(-1)
 
 
+class _GGPLTMLPGraphSlimTokNoGGPL(nn.Module):
+    """Graph-SlimTok with a plain TMLP numeric tokenizer."""
+
+    def __init__(
+        self,
+        *,
+        d_numerical: int,
+        categories: ty.Optional[ty.List[int]],
+        token_bias: bool,
+        n_layers: int = 1,
+        d_token: int = 1024,
+        d_ffn_factor: float = 0.66,
+        ffn_dropout: float | None = None,
+        residual_dropout: float | None = 0.1,
+        slimtok_channel_ratio: float = 2.0,
+        slimtok_dropout: ty.Optional[float] = None,
+        slimtok_layerscale_init: float = 1e-2,
+        slimtok_activation: str = "gelu",
+        graph_dynamic_rank: int = 16,
+        graph_temperature: float = 1.0,
+        graph_dynamic_scale_init: float = 1e-2,
+        graph_self_loop_init: float = 2.0,
+        d_out: int,
+        **_: ty.Any,
+    ) -> None:
+        super().__init__()
+        self.tokenizer = PlainTMLPTokenizer(
+            d_numerical=d_numerical,
+            categories=categories,
+            d_token=d_token,
+            bias=token_bias,
+        )
+        self.n_categories = 0 if categories is None else len(categories)
+        n_tokens = self.tokenizer.n_tokens
+        channel_hidden = max(1, int(d_token * slimtok_channel_ratio))
+        dropout = (
+            slimtok_dropout
+            if slimtok_dropout is not None
+            else (ffn_dropout if ffn_dropout is not None else residual_dropout)
+        )
+
+        self.n_tokens = n_tokens
+        self.d_token = d_token
+        self.graph_dynamic_rank = graph_dynamic_rank
+        self.channel_hidden = channel_hidden
+        self.layers = nn.ModuleList(
+            [
+                GraphSlimTokBlock(
+                    n_tokens=n_tokens,
+                    d_token=d_token,
+                    channel_hidden=channel_hidden,
+                    dropout=dropout or 0.0,
+                    layerscale_init=slimtok_layerscale_init,
+                    activation=slimtok_activation,
+                    graph_dynamic_rank=graph_dynamic_rank,
+                    graph_temperature=graph_temperature,
+                    graph_dynamic_scale_init=graph_dynamic_scale_init,
+                    graph_self_loop_init=graph_self_loop_init,
+                )
+                for _ in range(n_layers)
+            ]
+        )
+        self.activation = _resolve_activation(slimtok_activation)
+        self.normalization = nn.LayerNorm(d_token)
+        self.head = nn.Linear(d_token, d_out)
+
+    def forward(self, x_num: ty.Optional[Tensor], x_cat: ty.Optional[Tensor]) -> Tensor:
+        x = self.tokenizer(x_num, x_cat)
+        for layer in self.layers:
+            x = layer(x)
+        x = x[:, 0]
+        x = self.normalization(x)
+        x = self.activation(x)
+        x = self.head(x)
+        return x.squeeze(-1)
+
+
 class GGPLTMLPGraphSlimTok(GGPLTMLP):
     def __init__(
         self,
@@ -233,6 +390,129 @@ class GGPLTMLPGraphSlimTok(GGPLTMLP):
         model_config.setdefault("graph_dynamic_scale_init", 1e-2)
         model_config.setdefault("graph_self_loop_init", 2.0)
         return model_config
+
+    def fit(
+        self,
+        train_loader: ty.Optional[ty.Tuple[ty.Any, int]] = None,
+        X_num: ty.Optional[torch.Tensor] = None,
+        X_cat: ty.Optional[torch.Tensor] = None,
+        ys: ty.Optional[torch.Tensor] = None,
+        ids: ty.Optional[torch.Tensor] = None,
+        y_std: ty.Optional[float] = None,
+        eval_set: ty.Tuple[torch.Tensor, ty.Any] = None,
+        patience: int = 0,
+        task: str = None,
+        training_args: dict = None,
+        meta_args: ty.Optional[dict] = None,
+    ):
+        return super().fit(
+            train_loader=train_loader,
+            X_num=X_num,
+            X_cat=X_cat,
+            ys=ys,
+            ids=ids,
+            y_std=y_std,
+            eval_set=eval_set,
+            patience=patience,
+            task=task,
+            training_args=training_args,
+            meta_args=meta_args,
+        )
+
+    def predict(
+        self,
+        dev_loader: ty.Optional[ty.Tuple[ty.Any, int]] = None,
+        X_num: ty.Optional[torch.Tensor] = None,
+        X_cat: ty.Optional[torch.Tensor] = None,
+        ys: ty.Optional[torch.Tensor] = None,
+        ids: ty.Optional[torch.Tensor] = None,
+        y_std: ty.Optional[float] = None,
+        task: str = None,
+        return_probs: bool = True,
+        return_metric: bool = False,
+        return_loss: bool = False,
+        meta_args: ty.Optional[dict] = None,
+    ):
+        return super().predict(
+            dev_loader=dev_loader,
+            X_num=X_num,
+            X_cat=X_cat,
+            ys=ys,
+            ids=ids,
+            y_std=y_std,
+            task=task,
+            return_probs=return_probs,
+            return_metric=return_metric,
+            return_loss=return_loss,
+            meta_args=meta_args,
+        )
+
+
+class GGPLTMLPGraphSlimTokNoGGPL(GGPLTMLP):
+    def __init__(
+        self,
+        model_config: dict,
+        n_num_features: int,
+        categories: ty.Optional[ty.List[int]],
+        n_labels: int,
+        device: ty.Union[str, torch.device] = "cuda",
+        feat_gate: ty.Optional[str] = None,
+        pruning: ty.Optional[str] = None,
+        dataset=None,
+    ):
+        if feat_gate or pruning:
+            raise NotImplementedError(
+                "ggpl_tmlp_graph_slimtok_no_ggpl keeps a clean tokenizer replacement and does not support sparse gating options"
+            )
+        TabModel.__init__(self)
+        model_config = self.preproc_config(model_config)
+        self.model = _GGPLTMLPGraphSlimTokNoGGPL(
+            d_numerical=n_num_features,
+            categories=categories,
+            d_out=n_labels,
+            **model_config,
+        ).to(device)
+        self.base_name = "ggpl_tmlp_graph_slimtok_no_ggpl"
+        self.device = torch.device(device)
+        self.breakpoint_init = None
+        self.breakpoint_fallback = None
+        self.breakpoint_cache_dir = None
+        self.num_breakpoints = 0
+
+    def preproc_config(self, model_config: dict):
+        self.saved_model_config = model_config.copy()
+        model_config.pop("model_name", None)
+        model_config.pop("base_model", None)
+        model_config.pop("breakpoint_init", None)
+        model_config.pop("breakpoint_fallback", None)
+        model_config.pop("breakpoint_cache_dir", None)
+        model_config.pop("num_breakpoints", None)
+        model_config.pop("learnable_breakpoints", None)
+        model_config.pop("gbdt", None)
+        model_config.pop("gbdt_params", None)
+        model_config.pop("slimtok_rank_ratio", None)
+        model_config.pop("slimtok_min_rank", None)
+        model_config.pop("slimtok_rank", None)
+        model_config.setdefault("n_layers", 1)
+        model_config.setdefault("d_token", 1024)
+        model_config.setdefault("token_bias", True)
+        model_config.setdefault("d_ffn_factor", 0.66)
+        model_config.setdefault("ffn_dropout", None)
+        model_config.setdefault("residual_dropout", 0.1)
+        model_config.setdefault("slimtok_channel_ratio", 2.0)
+        model_config.setdefault("slimtok_dropout", None)
+        model_config.setdefault("slimtok_layerscale_init", 1e-2)
+        model_config.setdefault("slimtok_activation", "gelu")
+        model_config.setdefault("graph_dynamic_rank", 16)
+        model_config.setdefault("graph_temperature", 1.0)
+        model_config.setdefault("graph_dynamic_scale_init", 1e-2)
+        model_config.setdefault("graph_self_loop_init", 2.0)
+        return model_config
+
+    def _fit_or_load_breakpoints(
+        self, x_num: Tensor, ys: Tensor, save_path: str
+    ) -> None:
+        return
 
     def fit(
         self,
