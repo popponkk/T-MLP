@@ -661,3 +661,418 @@ class GraphSlimTokTMLPStaticPrior(TabModel):
         self.save_pt_model(output_dir)
         self.save_config(output_dir)
         self.save_history(output_dir)
+
+
+def _preproc_graph_slimtok_tmlp_config(
+    model_config: dict,
+    *,
+    include_static_prior_beta: bool = False,
+):
+    saved_model_config = model_config.copy()
+    model_config.pop("model_name", None)
+    model_config.pop("base_model", None)
+    model_config.pop("breakpoint_init", None)
+    model_config.pop("breakpoint_fallback", None)
+    model_config.pop("breakpoint_cache_dir", None)
+    model_config.pop("num_breakpoints", None)
+    model_config.pop("learnable_breakpoints", None)
+    model_config.pop("gbdt", None)
+    model_config.pop("gbdt_params", None)
+    model_config.pop("slimtok_rank_ratio", None)
+    model_config.pop("slimtok_min_rank", None)
+    model_config.pop("slimtok_rank", None)
+    if not include_static_prior_beta:
+        model_config.pop("static_prior_beta", None)
+    model_config.setdefault("n_layers", 1)
+    model_config.setdefault("d_token", 1024)
+    model_config.setdefault("token_bias", True)
+    model_config.setdefault("d_ffn_factor", 0.66)
+    model_config.setdefault("ffn_dropout", None)
+    model_config.setdefault("residual_dropout", 0.1)
+    model_config.setdefault("slimtok_channel_ratio", 2.0)
+    model_config.setdefault("slimtok_dropout", None)
+    model_config.setdefault("slimtok_layerscale_init", 1e-2)
+    model_config.setdefault("slimtok_activation", "gelu")
+    model_config.setdefault("graph_dynamic_rank", 16)
+    model_config.setdefault("graph_temperature", 1.0)
+    model_config.setdefault("graph_dynamic_scale_init", 1e-2)
+    model_config.setdefault("graph_self_loop_init", 2.0)
+    return saved_model_config, model_config
+
+
+class AblationGraphSlimTokBlock(nn.Module):
+    def __init__(
+        self,
+        n_tokens: int,
+        d_token: int,
+        channel_hidden: int,
+        dropout: float,
+        layerscale_init: float,
+        activation: str = "gelu",
+        graph_dynamic_rank: int = 16,
+        graph_temperature: float = 1.0,
+        graph_dynamic_scale_init: float = 1e-2,
+        graph_self_loop_init: float = 2.0,
+        graph_ablation: str = "full",
+    ) -> None:
+        super().__init__()
+        valid = {
+            "full",
+            "no_graph",
+            "no_channel",
+            "dynamic_only",
+            "static_only",
+            "identity_static",
+        }
+        if graph_ablation not in valid:
+            raise ValueError(f"Unsupported graph ablation: {graph_ablation}")
+
+        self.graph_ablation = graph_ablation
+        self.n_tokens = n_tokens
+        self.d_token = d_token
+        self.graph_dynamic_rank = graph_dynamic_rank
+        self.graph_temperature = float(graph_temperature)
+
+        self.graph_norm = nn.LayerNorm(d_token)
+        self.channel_norm = nn.LayerNorm(d_token)
+        self.graph_logits = nn.Parameter(torch.empty(n_tokens, n_tokens))
+        self.graph_dynamic_proj = nn.Linear(d_token, graph_dynamic_rank, bias=False)
+        self.graph_out = nn.Linear(d_token, d_token)
+        self.channel_down = nn.Linear(d_token, channel_hidden)
+        self.channel_up = nn.Linear(channel_hidden, d_token)
+        self.dropout = nn.Dropout(dropout)
+        self.activation = _resolve_activation(activation)
+        self.graph_scale = nn.Parameter(torch.ones(1) * layerscale_init)
+        self.channel_scale = nn.Parameter(torch.ones(1) * layerscale_init)
+        self.graph_dynamic_scale = nn.Parameter(
+            torch.ones(1) * graph_dynamic_scale_init
+        )
+
+        nn.init.normal_(self.graph_logits, mean=0.0, std=0.02)
+        with torch.no_grad():
+            self.graph_logits.fill_(0.0)
+            self.graph_logits.add_(torch.eye(n_tokens) * graph_self_loop_init)
+            if self.graph_ablation == "identity_static":
+                self.graph_logits.copy_(torch.eye(n_tokens) * graph_self_loop_init)
+        if self.graph_ablation == "identity_static":
+            self.graph_logits.requires_grad_(False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.graph_ablation != "no_graph":
+            x_res = x
+            h = self.graph_norm(x)
+
+            if self.graph_ablation == "full":
+                z = self.graph_dynamic_proj(h)
+                dynamic_logits = torch.matmul(z, z.transpose(1, 2)) / math.sqrt(
+                    self.graph_dynamic_rank
+                )
+                logits = (
+                    self.graph_logits.unsqueeze(0)
+                    + self.graph_dynamic_scale * dynamic_logits
+                )
+            elif self.graph_ablation == "dynamic_only":
+                z = self.graph_dynamic_proj(h)
+                dynamic_logits = torch.matmul(z, z.transpose(1, 2)) / math.sqrt(
+                    self.graph_dynamic_rank
+                )
+                logits = dynamic_logits
+            elif self.graph_ablation in {"static_only", "identity_static"}:
+                logits = self.graph_logits.unsqueeze(0)
+            else:
+                raise RuntimeError(f"Unexpected graph ablation: {self.graph_ablation}")
+
+            temperature = max(self.graph_temperature, 1e-6)
+            a = torch.softmax(logits / temperature, dim=-1)
+            h = torch.matmul(a, h)
+            h = self.graph_out(h)
+            h = self.dropout(h)
+            x = x_res + self.graph_scale * h
+
+        if self.graph_ablation != "no_channel":
+            x_res = x
+            h = self.channel_norm(x)
+            h = self.channel_down(h)
+            h = self.activation(h)
+            h = self.dropout(h)
+            h = self.channel_up(h)
+            x = x_res + self.channel_scale * h
+
+        return x
+
+
+class _GraphSlimTokTMLPAblation(nn.Module):
+    def __init__(
+        self,
+        *,
+        d_numerical: int,
+        categories: ty.Optional[ty.List[int]],
+        token_bias: bool,
+        n_layers: int = 1,
+        d_token: int = 1024,
+        d_ffn_factor: float = 0.66,
+        ffn_dropout: float | None = None,
+        residual_dropout: float | None = 0.1,
+        slimtok_channel_ratio: float = 2.0,
+        slimtok_dropout: ty.Optional[float] = None,
+        slimtok_layerscale_init: float = 1e-2,
+        slimtok_activation: str = "gelu",
+        graph_dynamic_rank: int = 16,
+        graph_temperature: float = 1.0,
+        graph_dynamic_scale_init: float = 1e-2,
+        graph_self_loop_init: float = 2.0,
+        graph_ablation: str = "full",
+        d_out: int,
+        **_: ty.Any,
+    ) -> None:
+        super().__init__()
+        self.tokenizer = PlainTMLPTokenizer(
+            d_numerical=d_numerical,
+            categories=categories,
+            d_token=d_token,
+            bias=token_bias,
+        )
+        self.n_categories = 0 if categories is None else len(categories)
+        n_tokens = self.tokenizer.n_tokens
+        channel_hidden = max(1, int(d_token * slimtok_channel_ratio))
+        dropout = (
+            slimtok_dropout
+            if slimtok_dropout is not None
+            else (ffn_dropout if ffn_dropout is not None else residual_dropout)
+        )
+
+        self.n_tokens = n_tokens
+        self.d_token = d_token
+        self.graph_dynamic_rank = graph_dynamic_rank
+        self.channel_hidden = channel_hidden
+        self.graph_ablation = graph_ablation
+        self.layers = nn.ModuleList(
+            [
+                AblationGraphSlimTokBlock(
+                    n_tokens=n_tokens,
+                    d_token=d_token,
+                    channel_hidden=channel_hidden,
+                    dropout=dropout or 0.0,
+                    layerscale_init=slimtok_layerscale_init,
+                    activation=slimtok_activation,
+                    graph_dynamic_rank=graph_dynamic_rank,
+                    graph_temperature=graph_temperature,
+                    graph_dynamic_scale_init=graph_dynamic_scale_init,
+                    graph_self_loop_init=graph_self_loop_init,
+                    graph_ablation=graph_ablation,
+                )
+                for _ in range(n_layers)
+            ]
+        )
+        self.activation = _resolve_activation(slimtok_activation)
+        self.normalization = nn.LayerNorm(d_token)
+        self.head = nn.Linear(d_token, d_out)
+
+    def forward(self, x_num: ty.Optional[Tensor], x_cat: ty.Optional[Tensor]) -> Tensor:
+        x = self.tokenizer(x_num, x_cat)
+        for layer in self.layers:
+            x = layer(x)
+        x = x[:, 0]
+        x = self.normalization(x)
+        x = self.activation(x)
+        x = self.head(x)
+        return x.squeeze(-1)
+
+
+class _GraphSlimTokTMLPNoBlock(nn.Module):
+    def __init__(
+        self,
+        *,
+        d_numerical: int,
+        categories: ty.Optional[ty.List[int]],
+        token_bias: bool,
+        n_layers: int = 1,
+        d_token: int = 1024,
+        d_ffn_factor: float = 0.66,
+        ffn_dropout: float | None = None,
+        residual_dropout: float | None = 0.1,
+        slimtok_channel_ratio: float = 2.0,
+        slimtok_dropout: ty.Optional[float] = None,
+        slimtok_layerscale_init: float = 1e-2,
+        slimtok_activation: str = "gelu",
+        graph_dynamic_rank: int = 16,
+        graph_temperature: float = 1.0,
+        graph_dynamic_scale_init: float = 1e-2,
+        graph_self_loop_init: float = 2.0,
+        d_out: int,
+        **_: ty.Any,
+    ) -> None:
+        super().__init__()
+        self.tokenizer = PlainTMLPTokenizer(
+            d_numerical=d_numerical,
+            categories=categories,
+            d_token=d_token,
+            bias=token_bias,
+        )
+        self.n_categories = 0 if categories is None else len(categories)
+        self.n_tokens = self.tokenizer.n_tokens
+        self.d_token = d_token
+        self.layers = nn.ModuleList([])
+        self.activation = _resolve_activation(slimtok_activation)
+        self.normalization = nn.LayerNorm(d_token)
+        self.head = nn.Linear(d_token, d_out)
+
+    def forward(self, x_num: ty.Optional[Tensor], x_cat: ty.Optional[Tensor]) -> Tensor:
+        x = self.tokenizer(x_num, x_cat)
+        x = x[:, 0]
+        x = self.normalization(x)
+        x = self.activation(x)
+        x = self.head(x)
+        return x.squeeze(-1)
+
+
+class _GraphSlimTokTMLPAblationBase(TabModel):
+    model_name: str
+    model_builder: ty.Any
+    graph_ablation: ty.Optional[str] = None
+
+    def __init__(
+        self,
+        model_config: dict,
+        n_num_features: int,
+        categories: ty.Optional[ty.List[int]],
+        n_labels: int,
+        device: ty.Union[str, torch.device] = "cuda",
+        feat_gate: ty.Optional[str] = None,
+        pruning: ty.Optional[str] = None,
+        dataset=None,
+    ):
+        if feat_gate or pruning:
+            raise NotImplementedError(
+                f"{self.model_name} keeps a clean tokenizer replacement and does not support sparse gating options"
+            )
+        super().__init__()
+        model_config = self.preproc_config(model_config)
+        if self.graph_ablation is not None:
+            model_config["graph_ablation"] = self.graph_ablation
+        self.model = self.model_builder(
+            d_numerical=n_num_features,
+            categories=categories,
+            d_out=n_labels,
+            **model_config,
+        ).to(device)
+        self.base_name = self.model_name
+        self.device = torch.device(device)
+
+    def preproc_config(self, model_config: dict):
+        self.saved_model_config, model_config = _preproc_graph_slimtok_tmlp_config(
+            model_config, include_static_prior_beta=False
+        )
+        return model_config
+
+    def fit(
+        self,
+        train_loader: ty.Optional[ty.Tuple[DataLoader, int]] = None,
+        X_num: ty.Optional[torch.Tensor] = None,
+        X_cat: ty.Optional[torch.Tensor] = None,
+        ys: ty.Optional[torch.Tensor] = None,
+        ids: ty.Optional[torch.Tensor] = None,
+        y_std: ty.Optional[float] = None,
+        eval_set: ty.Tuple[torch.Tensor, ty.Any] = None,
+        patience: int = 0,
+        task: str = None,
+        training_args: dict = None,
+        meta_args: ty.Optional[dict] = None,
+    ):
+        def train_step(model, x_num, x_cat, y):
+            start_time = time.time()
+            logits = model(x_num, x_cat)
+            used_time = time.time() - start_time
+            return logits, used_time
+
+        self.dnn_fit(
+            dnn_fit_func=train_step,
+            train_loader=train_loader,
+            X_num=X_num,
+            X_cat=X_cat,
+            ys=ys,
+            ids=ids,
+            y_std=y_std,
+            eval_set=eval_set,
+            patience=patience,
+            task=task,
+            training_args=training_args,
+            meta_args=meta_args,
+        )
+
+    def predict(
+        self,
+        dev_loader: ty.Optional[ty.Tuple[DataLoader, int]] = None,
+        X_num: ty.Optional[torch.Tensor] = None,
+        X_cat: ty.Optional[torch.Tensor] = None,
+        ys: ty.Optional[torch.Tensor] = None,
+        ids: ty.Optional[torch.Tensor] = None,
+        y_std: ty.Optional[float] = None,
+        task: str = None,
+        return_probs: bool = True,
+        return_metric: bool = False,
+        return_loss: bool = False,
+        meta_args: ty.Optional[dict] = None,
+    ):
+        def inference_step(model, x_num, x_cat):
+            start_time = time.time()
+            logits = model(x_num, x_cat)
+            used_time = time.time() - start_time
+            return logits, used_time
+
+        return self.dnn_predict(
+            dnn_predict_func=inference_step,
+            dev_loader=dev_loader,
+            X_num=X_num,
+            X_cat=X_cat,
+            ys=ys,
+            ids=ids,
+            y_std=y_std,
+            task=task,
+            return_probs=return_probs,
+            return_metric=return_metric,
+            return_loss=return_loss,
+            meta_args=meta_args,
+        )
+
+    def save(self, output_dir):
+        check_dir(output_dir)
+        self.save_pt_model(output_dir)
+        self.save_config(output_dir)
+        self.save_history(output_dir)
+
+
+class GraphSlimTokTMLPNoGraph(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_no_graph"
+    model_builder = _GraphSlimTokTMLPAblation
+    graph_ablation = "no_graph"
+
+
+class GraphSlimTokTMLPNoChannel(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_no_channel"
+    model_builder = _GraphSlimTokTMLPAblation
+    graph_ablation = "no_channel"
+
+
+class GraphSlimTokTMLPNoBlock(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_no_block"
+    model_builder = _GraphSlimTokTMLPNoBlock
+    graph_ablation = None
+
+
+class GraphSlimTokTMLPDynamicOnly(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_dynamic_only"
+    model_builder = _GraphSlimTokTMLPAblation
+    graph_ablation = "dynamic_only"
+
+
+class GraphSlimTokTMLPStaticOnly(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_static_only"
+    model_builder = _GraphSlimTokTMLPAblation
+    graph_ablation = "static_only"
+
+
+class GraphSlimTokTMLPIdentityStatic(_GraphSlimTokTMLPAblationBase):
+    model_name = "graph_slimtok_tmlp_identity_static"
+    model_builder = _GraphSlimTokTMLPAblation
+    graph_ablation = "identity_static"

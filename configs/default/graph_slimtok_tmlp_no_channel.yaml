@@ -1,0 +1,25 @@
+model:
+  model_name: graph_slimtok_tmlp_no_channel
+  base_model: graph_slimtok_tmlp_no_channel
+  n_layers: 1
+  d_token: 1024
+  token_bias: true
+  d_ffn_factor: 0.66
+  ffn_dropout: null
+  residual_dropout: 0.1
+  slimtok_channel_ratio: 2.0
+  slimtok_dropout: null
+  slimtok_layerscale_init: 1.0e-2
+  slimtok_activation: gelu
+  graph_dynamic_rank: 16
+  graph_temperature: 1.0
+  graph_dynamic_scale_init: 1.0e-2
+  graph_self_loop_init: 2.0
+
+training:
+  max_epoch: 300
+  optimizer: adamw
+  lr: 1.0e-5
+  weight_decay: 1.0e-5
+  batch_size: 32
+  early_stop: 20
