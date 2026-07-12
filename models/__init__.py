@@ -61,9 +61,9 @@ from .ggpl_tmlp_ssm_slimtok import GGPLTMLPSSMSlimTok
 from .ggpl_tmlp_tabm_slimtok import GGPLTMLPTabMSlimTok
 from .ggpl_tmlp_graph_slimtok import (
     GGPLTMLPGraphSlimTok,
-    GGPLTMLPGraphSlimTokSGDyn,
     GGPLTMLPGraphSlimTokNoGGPL,
 )
+from .ggpl_tmlp_graph_slimtok_dynprior import GGPLTMLPGraphSlimTokDynPrior
 from .ggpl_tmlp_graph_slimtok_graph_ablation import (
     GGPLTMLPGraphSlimTokDynamicOnly,
     GGPLTMLPGraphSlimTokFixedAlpha,
