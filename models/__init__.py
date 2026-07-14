@@ -63,6 +63,7 @@ from .ggpl_tmlp_graph_slimtok import (
     GGPLTMLPGraphSlimTok,
     GGPLTMLPGraphSlimTokNoGGPL,
 )
+from .ggpl_tmlp_graph_slimtok_dyngraph import GGPLTMLPGraphSlimTokDynGraph
 from .ggpl_tmlp_graph_slimtok_edgeprior import GGPLTMLPGraphSlimTokEdgePrior
 from .ggpl_tmlp_graph_slimtok_dynprior import GGPLTMLPGraphSlimTokDynPrior
 from .ggpl_tmlp_graph_slimtok_staticmask import GGPLTMLPGraphSlimTokStaticMask
