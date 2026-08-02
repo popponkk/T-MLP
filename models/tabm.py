@@ -77,6 +77,13 @@ class _TabMWrapper(nn.Module):
             for key, value in make_kwargs.items()
             if key in signature.parameters
         }
+        supported["d_out"] = int(d_out)
+        supported["n_num_features"] = self.n_num_features
+        supported["cat_cardinalities"] = self.cat_cardinalities
+        supported["k"] = self.k
+        supported["n_blocks"] = int(n_blocks)
+        supported["d_block"] = int(d_block)
+        supported["dropout"] = float(dropout)
         self.model = _OfficialTabM.make(**supported)
         # Trust the official model if it rewrites k internally.
         self.k = int(getattr(self.model, "k", self.k))
