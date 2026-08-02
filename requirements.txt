@@ -13,3 +13,4 @@ catboost
 lightgbm
 requests
 tqdm
+tabm

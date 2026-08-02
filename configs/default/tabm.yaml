@@ -1,0 +1,11 @@
+model:
+  k: 32
+  n_blocks: 3
+  d_block: 512
+  dropout: 0.1
+  d_out: 1
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"

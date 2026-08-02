@@ -16,7 +16,7 @@ import torch.nn as nn
 import optuna
 
 from models import (
-    MLP, tMLP, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
+    MLP, tMLP, TabMModel, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
     GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokDynGraph, GGPLTMLPGraphSlimTokDynOnly, GGPLTMLPGraphSlimTokDynPrior, GGPLTMLPGraphSlimTokEdgePrior, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokStaticMask, GGPLTMLPGraphSlimTokStaticOnly, GGPLTMLPGraphSlimTokDynamicOnly, GGPLTMLPGraphSlimTokFixedAlpha, GGPLTMLPGraphSlimTokIdentityStatic, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPSparseGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
@@ -27,7 +27,7 @@ from data.processor import DataProcessor
 
 MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel,
-    'mlp': MLP, 'tmlp': tMLP, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
+    'mlp': MLP, 'tmlp': tMLP, 'tabm': TabMModel, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
     'ggpl_tmlp': GGPLTMLP,
     'ggpl_tmlp_layerscale': GGPLTMLPLayerScale,
