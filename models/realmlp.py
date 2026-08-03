@@ -35,7 +35,7 @@ def _to_numpy_target(y):
     return np.asarray(y).reshape(-1)
 
 
-class RealMLPBaseline:
+class _RealMLPEstimator:
     def __init__(
         self,
         *,
@@ -92,9 +92,9 @@ class RealMLPBaseline:
         return np.asarray(y_pred).reshape(-1)
 
 
-class RealMLPModel(_TreeModel):
+class RealMLPBaseline(_TreeModel):
     model_name = "realmlp"
-    estimator_cls = RealMLPBaseline
+    estimator_cls = _RealMLPEstimator
 
     def _build_estimator(self, model_config: dict, n_labels: int):
         if n_labels != 1:
