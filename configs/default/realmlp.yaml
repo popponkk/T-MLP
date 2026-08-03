@@ -1,0 +1,10 @@
+model:
+  random_state: 42
+  n_epochs: 256
+  batch_size: 32
+  lr: 1.0e-5
+
+training:
+  lr: 1.0e-5
+  weight_decay: 0.0
+  optimizer: "adamw"

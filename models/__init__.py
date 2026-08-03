@@ -8,6 +8,7 @@ from .tmlp import tMLP
 from .tabm import TabMModel
 from .moe_tmlp import MoETMLP
 from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel
+from .realmlp import RealMLPModel
 from .tmlp_sr import SRTMLP
 from .tmlp_sr_pee import SRPEETMLP
 from .tmlp_sr_lgr import SRLGRTMLP
