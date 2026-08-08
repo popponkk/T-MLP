@@ -1,0 +1,16 @@
+model:
+  d_token: 256
+  n_layers: 4
+  n_heads: 8
+  ffn_hidden_dim: 512
+  predictor_hidden_dim: 512
+  dropout: 0.1
+  mask_ratio: 0.3
+  n_reg_tokens: 4
+  ema_decay: 0.996
+  aux_loss_weight: 1.0
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.0
+  optimizer: "adamw"

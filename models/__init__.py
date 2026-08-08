@@ -6,6 +6,7 @@ from .dcnv2 import DCNv2
 from .node_model import NODE
 from .tmlp import tMLP
 from .tabm import TabMModel
+from .tjepa import TJEPABaseline
 from .moe_tmlp import MoETMLP
 from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel
 from .realmlp import RealMLPBaseline
