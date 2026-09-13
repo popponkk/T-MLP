@@ -19,7 +19,7 @@ from models import (
     MLP, tMLP, TabMModel, TJEPABaseline, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel, RealMLPBaseline,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokDynGraph, GGPLTMLPGraphSlimTokDynOnly, GGPLTMLPGraphSlimTokDynPrior, GGPLTMLPGraphSlimTokEdgePrior, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokStaticMask, GGPLTMLPGraphSlimTokStaticOnly, GGPLTMLPGraphSlimTokDynamicOnly, GGPLTMLPGraphSlimTokFixedAlpha, GGPLTMLPGraphSlimTokIdentityStatic, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPSparseGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
+    GGPLTMLP, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokDynGraph, GGPLTMLPGraphSlimTokDynOnly, GGPLTMLPGraphSlimTokDynPrior, GGPLTMLPGraphSlimTokEdgePrior, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokStaticMask, GGPLTMLPGraphSlimTokStaticOnly, GGPLTMLPGraphSlimTokDynamicOnly, GGPLTMLPGraphSlimTokFixedAlpha, GGPLTMLPGraphSlimTokIdentityStatic, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLDynOnlyPool, GGPLDynOnlyPoolNoChannel, GGPLDynOnlyPoolLinearTokenizer, GGPLDynOnlyPoolNoGraph, GGPLDynOnlyPoolLinearTokenizerNoChannel, GGPLDynOnlyPoolNoGraphNoChannel, GGPLDynOnlyPoolLinearTokenizerNoGraph, GGPLDynOnlyPoolLinearTokenizerNoGraphNoChannel, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -49,6 +49,14 @@ MODEL_CARDS = {
     'ggpl_tmlp_graph_slimtok': GGPLTMLPGraphSlimTok,
     'ggpl_tmlp_graph_slimtok_dyngraph': GGPLTMLPGraphSlimTokDynGraph,
     'ggpl_tmlp_graph_slimtok_dynonly': GGPLTMLPGraphSlimTokDynOnly,
+    'ggpl_dynonly_pool': GGPLDynOnlyPool,
+    'ggpl_dynonly_pool_no_channel': GGPLDynOnlyPoolNoChannel,
+    'ggpl_dynonly_pool_linear_tokenizer': GGPLDynOnlyPoolLinearTokenizer,
+    'ggpl_dynonly_pool_no_graph': GGPLDynOnlyPoolNoGraph,
+    'ggpl_dynonly_pool_linear_tokenizer_no_channel': GGPLDynOnlyPoolLinearTokenizerNoChannel,
+    'ggpl_dynonly_pool_no_graph_no_channel': GGPLDynOnlyPoolNoGraphNoChannel,
+    'ggpl_dynonly_pool_linear_tokenizer_no_graph': GGPLDynOnlyPoolLinearTokenizerNoGraph,
+    'ggpl_dynonly_pool_linear_tokenizer_no_graph_no_channel': GGPLDynOnlyPoolLinearTokenizerNoGraphNoChannel,
     'ggpl_tmlp_graph_slimtok_dynprior': GGPLTMLPGraphSlimTokDynPrior,
     'ggpl_tmlp_graph_slimtok_edgeprior': GGPLTMLPGraphSlimTokEdgePrior,
     'ggpl_tmlp_graph_slimtok_no_ggpl': GGPLTMLPGraphSlimTokNoGGPL,
