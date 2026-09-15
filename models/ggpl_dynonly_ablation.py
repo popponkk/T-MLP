@@ -167,6 +167,7 @@ class _GGPLDynOnlyAblationModel(nn.Module):
         slimtok_activation: str = "gelu",
         graph_dynamic_rank: int = 16,
         graph_temperature: float = 1.0,
+        graph_self_loop_init: float = 2.0,
         d_out: int = 1,
         **_: ty.Any,
     ) -> None:
