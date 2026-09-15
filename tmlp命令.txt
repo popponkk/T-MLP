@@ -6,7 +6,15 @@ codex resume 019d198d-a39a-7bc3-b32e-e1068381b2bf      (MSI)
 conda activate tmlp
 
 csv转数据集：
-python scripts/csv_to_regression_dataset.py --csv data/csvs/hpcg_hpgmg_mixed.csv --name hpcg_hpgmg_mixed
+python scripts/csv_to_regression_dataset.py --csv data/csvs/raiderstream.csv --name raiderstream
+
+  python scripts/csv_to_regression_dataset.py \
+    --csv data/csvs/cachesweep.csv \
+    --name cachesweep \
+    --label-col -1 \
+    --train-ratio 0.8 \
+    --seed 42 \
+    --header 0
 
 python scripts/import_split_csv_dataset.py --source-dir data/excelformer_regression_csv/Brazilian_houses --name Brazilian_houses
 
@@ -28,6 +36,31 @@ python scripts/compare_results.py --dataset Brazilian_houses --sort-by r2 --outp
 
 执行模型：
 nohup python main.py --model mlp --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5 > logs/mlp-hpcg2-gpu.log 2>&1 &
+
+采集数据：
+python scripts/compare_results.py --dataset Ailerons --sort-by r2 --output results/compare/Ailerons-comparison.csv
+python scripts/compare_results.py --dataset diamonds --sort-by r2 --output results/compare/diamonds-comparison.csv
+python scripts/compare_results.py --dataset medical_charges --sort-by r2 --output results/compare/medical_charges-comparison.csv
+python scripts/compare_results.py --dataset california --sort-by r2 --output results/compare/california-comparison.csv
+python scripts/compare_results.py --dataset house_sales --sort-by r2 --output results/compare/house_sales-comparison.csv
+python scripts/compare_results.py --dataset house --sort-by r2 --output results/compare/house-comparison.csv
+python scripts/compare_results.py --dataset sulfur --sort-by r2 --output results/compare/sulfur-comparison.csv
+python scripts/compare_results.py --dataset pol --sort-by r2 --output results/compare/pol-comparison.csv
+python scripts/compare_results.py --dataset hpgmg3 --sort-by r2 --output results/compare/hpgmg3-comparison.csv
+python scripts/compare_results.py --dataset hpcg2 --sort-by r2 --output results/compare/hpcg2-comparison.csv
+python scripts/compare_results.py --dataset ramspeed --sort-by r2 --output results/compare/ramspeed-comparison.csv
+python scripts/compare_results.py --dataset mix_with_five_datasets161 --sort-by r2 --output results/compare/mix_with_five_datasets161-comparison.csv
+python scripts/compare_results.py --dataset openml_422_topo_2_1 --sort-by r2 --output results/compare/openml_422_topo_2_1-comparison.csv
+python scripts/compare_results.py --dataset openml_541_socmob --sort-by r2 --output results/compare/openml_541_socmob-comparison.csv
+python scripts/compare_results.py --dataset openml_42563_house_prices_nominal --sort-by r2 --output results/compare/openml_42563_house_prices_nominal-comparison.csv
+python scripts/compare_results.py --dataset openml_42571_allstate_claims_severity --sort-by r2 --output results/compare/openml_42571_allstate_claims_severity-comparison.csv
+python scripts/compare_results.py --dataset openml_42705_yolanda --sort-by r2 --output results/compare/openml_42705_yolanda-comparison.csv
+python scripts/compare_results.py --dataset openml_42724_onlinenewspopularity --sort-by r2 --output results/compare/openml_42724_onlinenewspopularity-comparison.csv
+python scripts/compare_results.py --dataset openml_42726_abalone --sort-by r2 --output results/compare/openml_42726_abalone-comparison.csv
+python scripts/compare_results.py --dataset openml_42727_colleges --sort-by r2 --output results/compare/openml_42727_colleges-comparison.csv
+python scripts/compare_results.py --dataset raiderstream --sort-by r2 --output results/compare/raiderstream-comparison.csv
+python scripts/compare_results.py --dataset stream --sort-by r2 --output results/compare/stream-comparison.csv
+python scripts/compare_results.py --dataset cachesweep --sort-by r2 --output results/compare/cachesweep-comparison.csv
 
 模型：
   - xgboost
