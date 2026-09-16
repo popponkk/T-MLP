@@ -4,6 +4,7 @@ import torch
 
 from models.ggpl_dynonly_ablation import (
     DynamicOnlyAblationBlock,
+    LinearNumericTokenizer,
     _GGPLDynOnlyAblationModel,
 )
 from models.ggpl_tmlp_graph_slimtok_graph_ablation import GraphSlimTokAblationBlock
@@ -59,6 +60,31 @@ def copy_common_block_state(old, new):
 
 def main():
     torch.manual_seed(0)
+    tokenizer = LinearNumericTokenizer(d_numerical=4, d_token=8, bias=True)
+    numeric_input = torch.randn(3, 4)
+    tokenized = tokenizer(numeric_input)
+    expected_numeric = (
+        numeric_input.unsqueeze(-1) * tokenizer.weight.unsqueeze(0)
+        + tokenizer.bias.unsqueeze(0)
+    )
+    assert tokenized.shape == (3, 5, 8)
+    assert torch.allclose(tokenized[:, 1:], expected_numeric)
+    assert torch.allclose(
+        tokenized[:, 0], tokenizer.cls_token.unsqueeze(0).expand(3, -1)
+    )
+    assert sum(parameter.numel() for parameter in tokenizer.parameters()) == (2 * 4 + 1) * 8
+    before = tokenizer(numeric_input).detach().clone()
+    with torch.no_grad():
+        tokenizer.weight[2].add_(1.0)
+        tokenizer.bias[2].add_(1.0)
+    after = tokenizer(numeric_input)
+    assert torch.allclose(before[:, 1:3], after[:, 1:3])
+    assert not torch.allclose(before[:, 3], after[:, 3])
+    assert torch.allclose(before[:, 4:], after[:, 4:])
+    no_bias_tokenizer = LinearNumericTokenizer(d_numerical=4, d_token=8, bias=False)
+    assert no_bias_tokenizer.bias is None
+    assert sum(parameter.numel() for parameter in no_bias_tokenizer.parameters()) == (4 + 1) * 8
+
     for name in REGISTRY_NAMES:
         assert name in MODEL_CARDS, name
         wrapped = make_baseline(
