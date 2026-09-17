@@ -1,6 +1,12 @@
 # Formal GGPL-GTM Delivery
 
-The active formal entries are `ggpl_gtm` and `ggpl_gtm_ablation` only.
+The centralized formal entries are `ggpl_gtm` and `ggpl_gtm_ablation`.
+Eight fixed-name derived entries are also provided for independent launch and
+result directories: `ggpl_gtm_ablation_full`, `ggpl_gtm_ablation_no_channel`,
+`ggpl_gtm_ablation_no_graph`, `ggpl_gtm_ablation_no_graph_no_channel`,
+`ggpl_gtm_ablation_linear`, `ggpl_gtm_ablation_linear_no_channel`,
+`ggpl_gtm_ablation_linear_no_graph`, and
+`ggpl_gtm_ablation_linear_no_graph_no_channel`.
 
 `ggpl_gtm` is fixed to GGPLTokenizer + dynamic-only graph + channel mixing + CLS readout.
 `ggpl_gtm_ablation` accepts: `full`, `no_channel`, `no_graph`,
@@ -26,6 +32,7 @@ deleted or rewritten. Their names are not aliases for the new formal records.
 python main.py --model ggpl_gtm --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5
 python main.py --model ggpl_gtm_ablation --ablation full --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5
 python main.py --model ggpl_gtm_ablation --ablation linear --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5
+python main.py --model ggpl_gtm_ablation_linear --dataset hpcg2 --device cuda --gpu 0 --batch_size 32 --lr 1e-5
 python scripts/check_ggpl_gtm_formal.py
 bash scripts/run_ggpl_gtm_experiments.sh ablation
 python scripts/summarize_ggpl_gtm_experiments.py --include-complete

@@ -19,7 +19,7 @@ from models import (
     MLP, tMLP, TabMModel, TJEPABaseline, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
     XGBoostModel, CatBoostModel, LightGBMModel, RealMLPBaseline,
     SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP, GGPLGTM, GGPLGTMAblation, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPSparseGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
+    GGPLTMLP, GGPLGTM, GGPLGTMAblation, GGPLGTMFullAblation, GGPLGTMNoChannelAblation, GGPLGTMNoGraphAblation, GGPLGTMNoGraphNoChannelAblation, GGPLGTMLinearAblation, GGPLGTMLinearNoChannelAblation, GGPLGTMLinearNoGraphAblation, GGPLGTMLinearNoGraphNoChannelAblation, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPSparseGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
@@ -32,6 +32,14 @@ MODEL_CARDS = {
     'ggpl_tmlp': GGPLTMLP,
     'ggpl_gtm': GGPLGTM,
     'ggpl_gtm_ablation': GGPLGTMAblation,
+    'ggpl_gtm_ablation_full': GGPLGTMFullAblation,
+    'ggpl_gtm_ablation_no_channel': GGPLGTMNoChannelAblation,
+    'ggpl_gtm_ablation_no_graph': GGPLGTMNoGraphAblation,
+    'ggpl_gtm_ablation_no_graph_no_channel': GGPLGTMNoGraphNoChannelAblation,
+    'ggpl_gtm_ablation_linear': GGPLGTMLinearAblation,
+    'ggpl_gtm_ablation_linear_no_channel': GGPLGTMLinearNoChannelAblation,
+    'ggpl_gtm_ablation_linear_no_graph': GGPLGTMLinearNoGraphAblation,
+    'ggpl_gtm_ablation_linear_no_graph_no_channel': GGPLGTMLinearNoGraphNoChannelAblation,
     'ggpl_tmlp_layerscale': GGPLTMLPLayerScale,
     'ggpl_tmlp_sgurefine': GGPLTMLPSGURefine,
     'ggpl_tmlp_tokchan': GGPLTMLPTokChan,

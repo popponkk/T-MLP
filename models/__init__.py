@@ -68,6 +68,16 @@ from .ggpl_tmlp_graph_slimtok import (
 )
 from .ggpl_gtm import GGPLGTM
 from .ggpl_gtm_ablation import GGPLGTMAblation
+from .ggpl_gtm_ablation_variants import (
+    GGPLGTMFullAblation,
+    GGPLGTMNoChannelAblation,
+    GGPLGTMNoGraphAblation,
+    GGPLGTMNoGraphNoChannelAblation,
+    GGPLGTMLinearAblation,
+    GGPLGTMLinearNoChannelAblation,
+    GGPLGTMLinearNoGraphAblation,
+    GGPLGTMLinearNoGraphNoChannelAblation,
+)
 from .ggpl_tmlp_graph_slimtok_ablation import (
     GGPLTMLPGraphSlimTokNoBlock,
     GGPLTMLPGraphSlimTokNoChannel,

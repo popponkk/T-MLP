@@ -13,6 +13,18 @@ from models.ggpl_gtm_ablation import (
 from utils.model_utils import MODEL_CARDS, make_baseline
 
 
+DERIVED_VARIANTS = {
+    "ggpl_gtm_ablation_full": "full",
+    "ggpl_gtm_ablation_no_channel": "no_channel",
+    "ggpl_gtm_ablation_no_graph": "no_graph",
+    "ggpl_gtm_ablation_no_graph_no_channel": "no_graph_no_channel",
+    "ggpl_gtm_ablation_linear": "linear",
+    "ggpl_gtm_ablation_linear_no_channel": "linear_no_channel",
+    "ggpl_gtm_ablation_linear_no_graph": "linear_no_graph",
+    "ggpl_gtm_ablation_linear_no_graph_no_channel": "linear_no_graph_no_channel",
+}
+
+
 def make_model(ablation: str):
     _, spec = resolve_ablation(ablation)
     return _GGPLGTMAblation(
@@ -93,6 +105,18 @@ def main() -> None:
     )
     assert wrapper.ablation == "linear"
     assert wrapper.base_name == "ggpl_gtm_ablation/linear"
+    for model_name, ablation in DERIVED_VARIANTS.items():
+        assert model_name in MODEL_CARDS
+        derived = make_baseline(
+            model_name,
+            {"d_token": 8, "n_layers": 1, "graph_dynamic_rank": 4, "ablation": ablation},
+            n_num=4,
+            cat_card=None,
+            n_labels=1,
+            device="cpu",
+        )
+        assert derived.ablation == ablation
+        assert derived.base_name == model_name
 
     complete = _GGPLGTM(
         d_numerical=4, categories=None, token_bias=True, d_token=8,
