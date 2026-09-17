@@ -1,5 +1,5 @@
 model:
-  model_name: ggpl_dynonly_ablation_independent_nnlinear
+  model_name: ggpl_gtm
   base_model: ggpl_tmlp
   n_layers: 1
   d_token: 1024
@@ -7,14 +7,17 @@ model:
   d_ffn_factor: 0.66
   ffn_dropout: null
   residual_dropout: 0.1
+  num_breakpoints: 8
+  breakpoint_init: "gbdt"
+  breakpoint_fallback: "quantile"
+  breakpoint_cache_dir: "artifacts/ggpl_gtm_breakpoints"
+  learnable_breakpoints: true
   slimtok_channel_ratio: 2.0
   slimtok_dropout: null
   slimtok_layerscale_init: 1.0e-2
   slimtok_activation: "gelu"
   graph_dynamic_rank: 16
   graph_temperature: 1.0
-  graph_dynamic_scale_init: 1.0e-2
-  graph_self_loop_init: 2.0
 
 training:
   lr: 1.0e-4

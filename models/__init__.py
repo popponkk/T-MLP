@@ -66,67 +66,8 @@ from .ggpl_tmlp_graph_slimtok import (
     GGPLTMLPGraphSlimTok,
     GGPLTMLPGraphSlimTokNoGGPL,
 )
-from .ggpl_tmlp_graph_slimtok_dyngraph import GGPLTMLPGraphSlimTokDynGraph
-from .ggpl_tmlp_graph_slimtok_dynonly import GGPLTMLPGraphSlimTokDynOnly
-from .ggpl_dynonly_ablation import GGPLDynOnlyAblation
-from .ggpl_dynonly_ablation_no_channel import GGPLDynOnlyAblationNoChannel
-from .ggpl_dynonly_ablation_linear_tokenizer import GGPLDynOnlyAblationLinearTokenizer
-from .ggpl_dynonly_ablation_no_graph import GGPLDynOnlyAblationNoGraph
-from .ggpl_dynonly_ablation_linear_tokenizer_no_channel import (
-    GGPLDynOnlyAblationLinearTokenizerNoChannel,
-)
-from .ggpl_dynonly_ablation_no_graph_no_channel import GGPLDynOnlyAblationNoGraphNoChannel
-from .ggpl_dynonly_ablation_linear_tokenizer_no_graph import (
-    GGPLDynOnlyAblationLinearTokenizerNoGraph,
-)
-from .ggpl_dynonly_ablation_linear_tokenizer_no_graph_no_channel import (
-    GGPLDynOnlyAblationLinearTokenizerNoGraphNoChannel,
-)
-from .ggpl_dynonly_ablation_shared_linear import GGPLDynOnlyAblationSharedLinear
-from .ggpl_dynonly_ablation_shared_linear_no_channel import (
-    GGPLDynOnlyAblationSharedLinearNoChannel,
-)
-from .ggpl_dynonly_ablation_shared_linear_no_graph import (
-    GGPLDynOnlyAblationSharedLinearNoGraph,
-)
-from .ggpl_dynonly_ablation_shared_linear_no_graph_no_channel import (
-    GGPLDynOnlyAblationSharedLinearNoGraphNoChannel,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear import (
-    GGPLDynOnlyAblationIndependentNNLinear,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_channel import (
-    GGPLDynOnlyAblationIndependentNNLinearNoChannel,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_graph import (
-    GGPLDynOnlyAblationIndependentNNLinearNoGraph,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_graph_no_channel import (
-    GGPLDynOnlyAblationIndependentNNLinearNoGraphNoChannel,
-)
-from .ggpl_dynonly_pool import GGPLDynOnlyPool
-from .ggpl_dynonly_pool_no_channel import GGPLDynOnlyPoolNoChannel
-from .ggpl_dynonly_pool_linear_tokenizer import GGPLDynOnlyPoolLinearTokenizer
-from .ggpl_dynonly_pool_no_graph import GGPLDynOnlyPoolNoGraph
-from .ggpl_dynonly_pool_linear_tokenizer_no_channel import (
-    GGPLDynOnlyPoolLinearTokenizerNoChannel,
-)
-from .ggpl_dynonly_pool_no_graph_no_channel import GGPLDynOnlyPoolNoGraphNoChannel
-from .ggpl_dynonly_pool_linear_tokenizer_no_graph import (
-    GGPLDynOnlyPoolLinearTokenizerNoGraph,
-)
-from .ggpl_dynonly_pool_linear_tokenizer_no_graph_no_channel import (
-    GGPLDynOnlyPoolLinearTokenizerNoGraphNoChannel,
-)
-from .ggpl_tmlp_graph_slimtok_edgeprior import GGPLTMLPGraphSlimTokEdgePrior
-from .ggpl_tmlp_graph_slimtok_dynprior import GGPLTMLPGraphSlimTokDynPrior
-from .ggpl_tmlp_graph_slimtok_staticmask import GGPLTMLPGraphSlimTokStaticMask
-from .ggpl_tmlp_graph_slimtok_graph_ablation import (
-    GGPLTMLPGraphSlimTokDynamicOnly,
-    GGPLTMLPGraphSlimTokFixedAlpha,
-    GGPLTMLPGraphSlimTokIdentityStatic,
-    GGPLTMLPGraphSlimTokStaticOnly,
-)
+from .ggpl_gtm import GGPLGTM
+from .ggpl_gtm_ablation import GGPLGTMAblation
 from .ggpl_tmlp_graph_slimtok_ablation import (
     GGPLTMLPGraphSlimTokNoBlock,
     GGPLTMLPGraphSlimTokNoChannel,

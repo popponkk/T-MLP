@@ -103,14 +103,12 @@ def main():
     args = parse_args()
     results_dir = Path(args.results_dir)
     rows = []
-    for model_dir in sorted(results_dir.iterdir()):
-        if not model_dir.is_dir():
-            continue
-        prediction_file = model_dir / args.dataset / "prediction.json"
-        if not prediction_file.exists():
-            continue
+    # Recursive discovery supports results/ggpl_gtm_ablation/<ablation>/<dataset>
+    # while preserving the original flat results/<model>/<dataset> layout.
+    for prediction_file in sorted(results_dir.glob(f"**/{args.dataset}/prediction.json")):
+        model_path = prediction_file.parent.parent.relative_to(results_dir)
         payload = load_prediction(prediction_file)
-        rows.append(normalize_row(model_dir.name, payload))
+        rows.append(normalize_row(model_path.as_posix(), payload))
 
     if not rows:
         raise FileNotFoundError(

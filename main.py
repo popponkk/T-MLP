@@ -26,7 +26,15 @@ parser.add_argument('--device', type=str, choices=['auto', 'cpu', 'cuda'], defau
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--config', type=str, default=None)
 parser.add_argument('--output_suffix', type=str, default='')
+parser.add_argument('--ablation', type=str, default=None)
 args = parser.parse_args()
+
+if args.model == 'ggpl_gtm' and args.ablation is not None:
+    parser.error('--ablation is valid only with --model ggpl_gtm_ablation')
+if args.model != 'ggpl_gtm_ablation' and args.ablation is not None:
+    parser.error('--ablation is valid only with --model ggpl_gtm_ablation')
+if args.model == 'ggpl_gtm_ablation':
+    args.ablation = args.ablation or 'full'
 
 if args.device == 'cpu':
     device = torch.device('cpu')
@@ -44,6 +52,8 @@ if args.model == 'tmlp' and any([args.feat_gate, args.pruning]):
     output_dir = f'results/{args.model}{sparsity_scheme}/{args.dataset}'
 else:
     output_dir = f'results/{args.model}/{args.dataset}'
+if args.model == 'ggpl_gtm_ablation':
+    output_dir = f'results/{args.model}/{args.ablation}/{args.dataset}'
 if args.output_suffix:
     output_dir = output_dir.replace(f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1)
 # dataset
@@ -63,6 +73,8 @@ if args.model != 'tmlp' or user_defined:
     config_file = args.config or f'configs/default/{args.model}.yaml'
     configs = load_config_from_file(config_file)
     configs.setdefault('training', configs.get('fit', {}))
+    if args.model == 'ggpl_gtm_ablation':
+        configs['model']['ablation'] = args.ablation
     # uniform model & training args
     if args.model not in ['xgboost', 'catboost', 'lightgbm']:
         if 'd_ffn_factor' in configs['model']:
