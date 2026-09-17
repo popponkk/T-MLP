@@ -78,6 +78,18 @@ from .ggpl_gtm_ablation_variants import (
     GGPLGTMLinearNoGraphAblation,
     GGPLGTMLinearNoGraphNoChannelAblation,
 )
+from .ggpl_dynonly_ablation_independent_nnlinear import (
+    GGPLDynOnlyAblationIndependentNNLinear,
+)
+from .ggpl_dynonly_ablation_independent_nnlinear_no_channel import (
+    GGPLDynOnlyAblationIndependentNNLinearNoChannel,
+)
+from .ggpl_dynonly_ablation_independent_nnlinear_no_graph import (
+    GGPLDynOnlyAblationIndependentNNLinearNoGraph,
+)
+from .ggpl_dynonly_ablation_independent_nnlinear_no_graph_no_channel import (
+    GGPLDynOnlyAblationIndependentNNLinearNoGraphNoChannel,
+)
 from .ggpl_tmlp_graph_slimtok_ablation import (
     GGPLTMLPGraphSlimTokNoBlock,
     GGPLTMLPGraphSlimTokNoChannel,
