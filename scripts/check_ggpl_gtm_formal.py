@@ -6,7 +6,7 @@ import torch.nn as nn
 from models.ggpl_gtm import _GGPLGTM
 from models.ggpl_gtm_ablation import (
     ABLATIONS,
-    IndependentNNLinearNumericTokenizer,
+    SharedLinearNumericTokenizer,
     _GGPLGTMAblation,
     resolve_ablation,
 )
@@ -41,33 +41,21 @@ def make_model(ablation: str):
     )
 
 
-def check_independent_linear() -> None:
-    tokenizer = IndependentNNLinearNumericTokenizer(4, 8, bias=True)
-    assert isinstance(tokenizer.linears, nn.ModuleList)
-    assert len(tokenizer.linears) == 4
-    assert all(
-        isinstance(layer, nn.Linear)
-        and layer.in_features == 1
-        and layer.out_features == 8
-        for layer in tokenizer.linears
-    )
-    assert len({id(layer) for layer in tokenizer.linears}) == 4
-    assert len({layer.weight.data_ptr() for layer in tokenizer.linears}) == 4
-    assert len({layer.bias.data_ptr() for layer in tokenizer.linears}) == 4
-    assert sum(parameter.numel() for parameter in tokenizer.parameters()) == (2 * 4 + 1) * 8
+def check_shared_linear() -> None:
+    tokenizer = SharedLinearNumericTokenizer(4, 8, bias=True)
+    assert isinstance(tokenizer.linear, nn.Linear)
+    assert tokenizer.linear.in_features == 1
+    assert tokenizer.linear.out_features == 8
+    assert sum(parameter.numel() for parameter in tokenizer.linear.parameters()) == 2 * 8
+    assert sum(parameter.numel() for parameter in tokenizer.parameters()) == 3 * 8
     assert sum(
         parameter.numel()
-        for parameter in IndependentNNLinearNumericTokenizer(4, 8, bias=False).parameters()
-    ) == (4 + 1) * 8
+        for parameter in SharedLinearNumericTokenizer(4, 8, bias=False).parameters()
+    ) == 2 * 8
 
-    x = torch.randn(3, 4)
-    before = tokenizer(x).detach().clone()
-    with torch.no_grad():
-        tokenizer.linears[2].weight.add_(1.0)
-    after = tokenizer(x)
-    assert torch.allclose(before[:, 1:3], after[:, 1:3])
-    assert not torch.allclose(before[:, 3], after[:, 3])
-    assert torch.allclose(before[:, 4:], after[:, 4:])
+    x = torch.tensor([[0.5, 0.5, -1.0, 2.0]])
+    numeric_tokens = tokenizer(x)[:, 1:]
+    assert torch.allclose(numeric_tokens[:, 0], numeric_tokens[:, 1])
 
 
 def main() -> None:
@@ -78,7 +66,7 @@ def main() -> None:
     }
     assert "ggpl_gtm" in MODEL_CARDS
     assert "ggpl_gtm_ablation" in MODEL_CARDS
-    check_independent_linear()
+    check_shared_linear()
 
     for name, spec in ABLATIONS.items():
         model = make_model(name)
@@ -104,7 +92,7 @@ def main() -> None:
         "ggpl_gtm_ablation", config, n_num=4, cat_card=None, n_labels=1, device="cpu"
     )
     assert wrapper.ablation == "linear"
-    assert wrapper.base_name == "ggpl_gtm_ablation/linear"
+    assert wrapper.base_name == "ggpl_gtm_ablation_shared_linear/linear"
     for model_name, ablation in DERIVED_VARIANTS.items():
         assert model_name in MODEL_CARDS
         derived = make_baseline(

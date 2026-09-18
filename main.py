@@ -53,9 +53,45 @@ if args.model == 'tmlp' and any([args.feat_gate, args.pruning]):
 else:
     output_dir = f'results/{args.model}/{args.dataset}'
 if args.model == 'ggpl_gtm_ablation':
-    output_dir = f'results/{args.model}/{args.ablation}/{args.dataset}'
+    result_group = (
+        'ggpl_gtm_ablation_shared_linear'
+        if args.ablation in {
+            'linear', 'linear_no_channel', 'linear_no_graph',
+            'linear_no_graph_no_channel',
+        }
+        else args.model
+    )
+    output_dir = f'results/{result_group}/{args.ablation}/{args.dataset}'
+elif args.model in {
+    'ggpl_gtm_ablation_linear',
+    'ggpl_gtm_ablation_linear_no_channel',
+    'ggpl_gtm_ablation_linear_no_graph',
+    'ggpl_gtm_ablation_linear_no_graph_no_channel',
+}:
+    ablation = args.model.removeprefix('ggpl_gtm_ablation_')
+    output_dir = f'results/ggpl_gtm_ablation_shared_linear/{ablation}/{args.dataset}'
 if args.output_suffix:
-    output_dir = output_dir.replace(f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1)
+    if (
+        args.model == 'ggpl_gtm_ablation'
+        and args.ablation in {
+            'linear', 'linear_no_channel', 'linear_no_graph',
+            'linear_no_graph_no_channel',
+        }
+    ) or args.model in {
+        'ggpl_gtm_ablation_linear',
+        'ggpl_gtm_ablation_linear_no_channel',
+        'ggpl_gtm_ablation_linear_no_graph',
+        'ggpl_gtm_ablation_linear_no_graph_no_channel',
+    }:
+        output_dir = output_dir.replace(
+            'results/ggpl_gtm_ablation_shared_linear',
+            f'results/ggpl_gtm_ablation_shared_linear{args.output_suffix}',
+            1,
+        )
+    else:
+        output_dir = output_dir.replace(
+            f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1
+        )
 # dataset
 print('preparing dataset: ', args.dataset)
 append_ids = (

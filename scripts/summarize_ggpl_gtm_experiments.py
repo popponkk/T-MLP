@@ -12,10 +12,15 @@ DATASETS = {
     "mix_with_five_datasets161": "Mix", "raiderstream": "RaiderSTREAM",
     "stream": "STREAM", "cachesweep": "CacheSweep",
 }
-ABLATIONS = [
-    "full", "no_channel", "no_graph", "no_graph_no_channel",
-    "linear", "linear_no_channel", "linear_no_graph", "linear_no_graph_no_channel",
-]
+GGPL_ABLATIONS = ["full", "no_channel", "no_graph", "no_graph_no_channel"]
+LINEAR_ABLATIONS = ["linear", "linear_no_channel", "linear_no_graph", "linear_no_graph_no_channel"]
+# Legacy independent-nn.Linear results remain under ggpl_gtm_ablation. New
+# shared-linear runs use their own root and must never be merged silently.
+RUNS = (
+    [("ggpl_gtm_ablation", name, "ggpl") for name in GGPL_ABLATIONS]
+    + [("ggpl_gtm_ablation", name, "independent_nnlinear_legacy") for name in LINEAR_ABLATIONS]
+    + [("ggpl_gtm_ablation_shared_linear", name, "shared_linear") for name in LINEAR_ABLATIONS]
+)
 
 
 def prediction_path(results_dir: Path, model: str, ablation: str, dataset: str, seed: int) -> Path:
@@ -30,11 +35,11 @@ def main() -> None:
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     parser.add_argument("--include-complete", action="store_true")
     args = parser.parse_args()
-    runs = [("ggpl_gtm_ablation", name) for name in ABLATIONS]
+    runs = list(RUNS)
     if args.include_complete:
-        runs.insert(0, ("ggpl_gtm", ""))
+        runs.insert(0, ("ggpl_gtm", "", "ggpl"))
     per_seed, summary = [], []
-    for model, ablation in runs:
+    for model, ablation, tokenizer_type in runs:
         for dataset, display_dataset in DATASETS.items():
             rows = []
             for seed in args.seeds:
@@ -46,12 +51,14 @@ def main() -> None:
                 row = {
                     "model": model, "ablation": ablation or None, "dataset": dataset,
                     "display_dataset": display_dataset, "seed": seed,
+                    "tokenizer_type": tokenizer_type,
                     "rmse": metrics.get("rmse"), "mae": metrics.get("mae"), "r2": metrics.get("r2"),
                 }
                 rows.append(row)
                 per_seed.append(row)
             if rows:
-                record = {"model": model, "ablation": ablation or None, "dataset": dataset,
+                record = {"model": model, "ablation": ablation or None,
+                          "tokenizer_type": tokenizer_type, "dataset": dataset,
                           "display_dataset": display_dataset, "n_seeds": len(rows)}
                 for metric in ("rmse", "mae", "r2"):
                     values = [row[metric] for row in rows if row[metric] is not None]

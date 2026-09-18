@@ -26,7 +26,11 @@ run_one() {
     log="logs/${model}_${ablation}_${dataset}_seed${seed}.log"
     {
       echo "model=${model} ablation=${ablation} dataset=${dataset} seed=${seed} gpu=0"
-      echo "result_dir=results/${model}${suffix}/${ablation}/${dataset}"
+      if [[ "${model}" == "ggpl_gtm_ablation" && "${ablation}" == linear* ]]; then
+        echo "result_dir=results/ggpl_gtm_ablation_shared_linear${suffix}/${ablation}/${dataset}"
+      else
+        echo "result_dir=results/${model}${suffix}/${ablation}/${dataset}"
+      fi
       python main.py --model "${model}" --ablation "${ablation}" --dataset "${dataset}" \
         --device cuda --gpu 0 --batch_size 32 --lr 1e-5 --seed "${seed}" \
         --output_suffix "${suffix}"

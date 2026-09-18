@@ -20,10 +20,10 @@ ABLATIONS = {
     "no_channel": {"tokenizer_type": "ggpl", "use_graph": True, "use_channel": False},
     "no_graph": {"tokenizer_type": "ggpl", "use_graph": False, "use_channel": True},
     "no_graph_no_channel": {"tokenizer_type": "ggpl", "use_graph": False, "use_channel": False},
-    "linear": {"tokenizer_type": "independent_nnlinear", "use_graph": True, "use_channel": True},
-    "linear_no_channel": {"tokenizer_type": "independent_nnlinear", "use_graph": True, "use_channel": False},
-    "linear_no_graph": {"tokenizer_type": "independent_nnlinear", "use_graph": False, "use_channel": True},
-    "linear_no_graph_no_channel": {"tokenizer_type": "independent_nnlinear", "use_graph": False, "use_channel": False},
+    "linear": {"tokenizer_type": "shared_linear", "use_graph": True, "use_channel": True},
+    "linear_no_channel": {"tokenizer_type": "shared_linear", "use_graph": True, "use_channel": False},
+    "linear_no_graph": {"tokenizer_type": "shared_linear", "use_graph": False, "use_channel": True},
+    "linear_no_graph_no_channel": {"tokenizer_type": "shared_linear", "use_graph": False, "use_channel": False},
 }
 
 
@@ -36,15 +36,13 @@ def resolve_ablation(name: ty.Optional[str]) -> tuple[str, dict]:
     return name, dict(ABLATIONS[name])
 
 
-class IndependentNNLinearNumericTokenizer(nn.Module):
-    """Compare83's per-feature independent ``nn.Linear(1, d_token)`` tokenizer."""
+class SharedLinearNumericTokenizer(nn.Module):
+    """[CLS] plus one shared ``nn.Linear(1, d_token)`` for numeric features."""
 
     def __init__(self, d_numerical: int, d_token: int, bias: bool = True) -> None:
         super().__init__()
         self.d_numerical = int(d_numerical)
-        self.linears = nn.ModuleList(
-            [nn.Linear(1, d_token, bias=bias) for _ in range(self.d_numerical)]
-        )
+        self.linear = nn.Linear(1, d_token, bias=bias)
         self.cls_token = nn.Parameter(torch.empty(d_token))
         nn_init.kaiming_uniform_(self.cls_token.unsqueeze(0), a=math.sqrt(5))
 
@@ -54,13 +52,14 @@ class IndependentNNLinearNumericTokenizer(nn.Module):
 
     def forward(self, x_num: Tensor, x_cat: ty.Optional[Tensor] = None) -> Tensor:
         if x_cat is not None and x_cat.numel() > 0:
-            raise NotImplementedError("ggpl_gtm_ablation linear modes support numerical inputs only.")
+            raise NotImplementedError("ggpl_gtm_ablation shared-linear modes support numerical inputs only.")
         if x_num is None:
             raise ValueError("x_num is required")
-        numeric_tokens = torch.stack(
-            [linear(x_num[:, j : j + 1]) for j, linear in enumerate(self.linears)],
-            dim=1,
-        )
+        if x_num.ndim != 2 or x_num.shape[1] != self.d_numerical:
+            raise ValueError(
+                f"Expected x_num with shape [B, {self.d_numerical}], got {tuple(x_num.shape)}"
+            )
+        numeric_tokens = self.linear(x_num.unsqueeze(-1))
         cls = self.cls_token.view(1, 1, -1).expand(x_num.shape[0], 1, -1)
         return torch.cat([cls, numeric_tokens], dim=1)
 
@@ -174,12 +173,12 @@ class _GGPLGTMAblation(nn.Module):
                 num_breakpoints=num_breakpoints,
                 learnable_breakpoints=learnable_breakpoints,
             )
-        elif tokenizer_type == "independent_nnlinear":
+        elif tokenizer_type == "shared_linear":
             if categories:
                 raise NotImplementedError(
-                    "ggpl_gtm_ablation linear modes support numerical datasets only."
+                    "ggpl_gtm_ablation shared-linear modes support numerical datasets only."
                 )
-            self.tokenizer = IndependentNNLinearNumericTokenizer(
+            self.tokenizer = SharedLinearNumericTokenizer(
                 d_numerical=d_numerical, d_token=d_token, bias=token_bias
             )
         else:
@@ -241,7 +240,12 @@ class GGPLGTMAblation(GGPLTMLP):
         self.ablation, spec = resolve_ablation(raw_config.pop("ablation", "full"))
         TabModel.__init__(self)
         config = self.preproc_config(raw_config, use_ggpl_tokenizer=spec["tokenizer_type"] == "ggpl")
-        self.saved_model_config["ablation"] = self.ablation
+        self.saved_model_config.update(
+            ablation=self.ablation,
+            tokenizer_type=spec["tokenizer_type"],
+            use_graph=spec["use_graph"],
+            use_channel=spec["use_channel"],
+        )
         self.model = _GGPLGTMAblation(
             d_numerical=n_num_features,
             categories=categories,
@@ -251,7 +255,12 @@ class GGPLGTMAblation(GGPLTMLP):
             use_channel=spec["use_channel"],
             **config,
         ).to(device)
-        self.base_name = f"ggpl_gtm_ablation/{self.ablation}"
+        results_group = (
+            "ggpl_gtm_ablation_shared_linear"
+            if spec["tokenizer_type"] == "shared_linear"
+            else "ggpl_gtm_ablation"
+        )
+        self.base_name = f"{results_group}/{self.ablation}"
         self.device = torch.device(device)
         self.use_ggpl_tokenizer = spec["tokenizer_type"] == "ggpl"
         if self.use_ggpl_tokenizer:

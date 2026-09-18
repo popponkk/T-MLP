@@ -11,20 +11,29 @@ result directories: `ggpl_gtm_ablation_full`, `ggpl_gtm_ablation_no_channel`,
 `ggpl_gtm` is fixed to GGPLTokenizer + dynamic-only graph + channel mixing + CLS readout.
 `ggpl_gtm_ablation` accepts: `full`, `no_channel`, `no_graph`,
 `no_graph_no_channel`, `linear`, `linear_no_channel`, `linear_no_graph`, and
-`linear_no_graph_no_channel`. `linear` always means the independent
-`nn.ModuleList[nn.Linear(1, d_token)]` tokenizer.
+`linear_no_graph_no_channel`. The four `linear*` choices now use one shared
+`nn.Linear(1, d_token)` for all numeric features. They are saved under
+`results/ggpl_gtm_ablation_shared_linear[/_seed<seed>]/<ablation>/<dataset>`
+so they cannot overwrite historical independent-linear runs.
+
+Historical independent-`nn.Linear` results remain traceable through the
+separate legacy entries `ggpl_dynonly_ablation_independent_nnlinear` and its
+three graph/channel variants. Those results are not re-labelled as shared
+linear. Sharing changes both parameter count and feature-identity information,
+so a shared-linear comparison is not evidence about every independent linear
+representation.
 
 ## Removed Active Sources
 
 The following active source/config/script families are removed by this migration:
 
-- `models/ggpl_dynonly_ablation*.py` and matching `configs/default/` files;
 - `models/ggpl_dynonly_pool*.py` and matching `configs/default/` files;
 - `models/ggpl_tmlp_graph_slimtok_dynonly.py` and its default config;
 - the old `check_`, `run_`, and `summarize_` scripts dedicated to those families.
 
 Historical `results/`, logs, checkpoints, and comparison CSV files are not
-deleted or rewritten. Their names are not aliases for the new formal records.
+deleted or rewritten. Their names are not aliases for the new shared-linear
+formal records.
 
 ## Commands
 
