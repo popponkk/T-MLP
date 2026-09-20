@@ -24,7 +24,9 @@ parser.add_argument('--wd', type=float, default=0)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--device', type=str, choices=['auto', 'cpu', 'cuda'], default='auto')
 parser.add_argument('--seed', type=int, default=42)
+parser.add_argument('--data_seed', type=int, default=None)
 parser.add_argument('--config', type=str, default=None)
+parser.add_argument('--output_dir', type=str, default=None)
 parser.add_argument('--output_suffix', type=str, default='')
 parser.add_argument('--ablation', type=str, default=None)
 args = parser.parse_args()
@@ -92,6 +94,8 @@ if args.output_suffix:
         output_dir = output_dir.replace(
             f'results/{args.model}', f'results/{args.model}{args.output_suffix}', 1
         )
+if args.output_dir is not None:
+    output_dir = args.output_dir
 # dataset
 print('preparing dataset: ', args.dataset)
 append_ids = (
@@ -100,7 +104,7 @@ append_ids = (
 )
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
-    seed=args.seed, add_ids=append_ids,
+    seed=args.seed if args.data_seed is None else args.data_seed, add_ids=append_ids,
 )
 
 # model config

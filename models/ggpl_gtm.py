@@ -178,6 +178,14 @@ class GGPLGTM(GGPLTMLP):
             "breakpoint_cache_dir", "artifacts/ggpl_gtm_breakpoints"
         )
         self.num_breakpoints = int(self.saved_model_config.get("num_breakpoints", 8))
+        self.n_parameters = sum(parameter.numel() for parameter in self.model.parameters())
+        self.n_trainable_parameters = sum(
+            parameter.numel() for parameter in self.model.parameters() if parameter.requires_grad
+        )
+        print(
+            f"[ggpl_gtm] parameters={self.n_parameters} "
+            f"trainable_parameters={self.n_trainable_parameters}"
+        )
 
     def preproc_config(self, model_config: dict) -> dict:
         self.saved_model_config = model_config.copy()
