@@ -238,7 +238,8 @@ def main():
             process.terminate()
     signal.signal(signal.SIGINT, stop_children)
     signal.signal(signal.SIGTERM, stop_children)
-    while pending or children:
+    # Once interrupted, pending tasks must not keep the scheduler alive.
+    while (pending and not stopping) or children:
         while pending and len(children) < len(args.gpus) and not stopping:
             task = pending.pop(0)
             gpu = args.gpus[len(children) % len(args.gpus)]
