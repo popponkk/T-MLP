@@ -1,7 +1,15 @@
 """Small CPU checks for formal GGPL-GTM and all centralized ablations."""
 
+import sys
+from pathlib import Path
+
 import torch
 import torch.nn as nn
+
+# Running this file directly sets ``sys.path[0]`` to ``scripts/``.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from models.ggpl_gtm import _GGPLGTM
 from models.ggpl_gtm_ablation import (
