@@ -93,7 +93,7 @@ class _GGPLGTM(nn.Module):
         slimtok_layerscale_init: float = 1e-2,
         slimtok_activation: str = "gelu",
         graph_dynamic_rank: int = 16,
-        graph_temperature: float = 1.0,
+        graph_temperature: float = 16.0,
         d_out: int = 1,
         **_: ty.Any,
     ) -> None:
@@ -209,7 +209,7 @@ class GGPLGTM(GGPLTMLP):
             "slimtok_layerscale_init": 1e-2,
             "slimtok_activation": "gelu",
             "graph_dynamic_rank": 16,
-            "graph_temperature": 1.0,
+            "graph_temperature": 16.0,
         }
         for key, value in defaults.items():
             model_config.setdefault(key, value)

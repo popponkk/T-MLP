@@ -77,6 +77,8 @@ def main() -> None:
         block = model.layers[0]
         assert hasattr(block, "graph_norm") == spec["use_graph"]
         assert hasattr(block, "channel_norm") == spec["use_channel"]
+        if spec["use_graph"]:
+            assert block.graph_temperature == 16.0
         assert not hasattr(block, "graph_logits")
         assert not any("pool" in module_name.lower() for module_name, _ in model.named_modules())
         if not spec["use_graph"]:
@@ -110,6 +112,7 @@ def main() -> None:
         d_numerical=4, categories=None, token_bias=True, d_token=8,
         n_layers=1, graph_dynamic_rank=4, d_out=1,
     )
+    assert complete.layers[0].graph_temperature == 16.0
     full = make_model("full")
     full.load_state_dict(complete.state_dict(), strict=True)
     complete.eval()

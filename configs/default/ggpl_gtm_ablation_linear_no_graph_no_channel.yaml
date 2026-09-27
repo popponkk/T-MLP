@@ -13,7 +13,7 @@ model:
   slimtok_layerscale_init: 1.0e-2
   slimtok_activation: "gelu"
   graph_dynamic_rank: 16
-  graph_temperature: 1.0
+  graph_temperature: 16.0
 
 training:
   lr: 1.0e-4

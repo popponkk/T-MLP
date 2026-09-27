@@ -159,7 +159,7 @@ class _GGPLGTMAblation(nn.Module):
         slimtok_layerscale_init: float = 1e-2,
         slimtok_activation: str = "gelu",
         graph_dynamic_rank: int = 16,
-        graph_temperature: float = 1.0,
+        graph_temperature: float = 16.0,
         d_out: int = 1,
         **_: ty.Any,
     ) -> None:
@@ -275,11 +275,15 @@ class GGPLGTMAblation(GGPLTMLP):
             self.breakpoint_fallback = None
             self.breakpoint_cache_dir = None
             self.num_breakpoints = 0
-        n_parameters = sum(parameter.numel() for parameter in self.model.parameters())
+        self.n_parameters = sum(parameter.numel() for parameter in self.model.parameters())
+        self.n_trainable_parameters = sum(
+            parameter.numel() for parameter in self.model.parameters() if parameter.requires_grad
+        )
         print(
             f"[ggpl_gtm_ablation/{self.ablation}] tokenizer={spec['tokenizer_type']} "
             f"graph={spec['use_graph']} channel={spec['use_channel']} "
-            f"readout=cls parameters={n_parameters}"
+            f"readout=cls parameters={self.n_parameters} "
+            f"trainable_parameters={self.n_trainable_parameters}"
         )
 
     def preproc_config(self, model_config: dict, *, use_ggpl_tokenizer: bool) -> dict:
@@ -312,7 +316,7 @@ class GGPLGTMAblation(GGPLTMLP):
             "slimtok_layerscale_init": 1e-2,
             "slimtok_activation": "gelu",
             "graph_dynamic_rank": 16,
-            "graph_temperature": 1.0,
+            "graph_temperature": 16.0,
         }
         for key, value in defaults.items():
             model_config.setdefault(key, value)
