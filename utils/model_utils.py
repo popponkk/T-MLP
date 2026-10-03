@@ -5,6 +5,8 @@ import yaml
 import shutil
 import random
 import datetime
+import importlib.util
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -25,11 +27,30 @@ from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
 from data.processor import DataProcessor
 
+
+def _load_hingemix_dp():
+    """Load the user-required hyphenated model file under a legal module name."""
+    module_name = "models.hingemix_dp"
+    if module_name in sys.modules:
+        return sys.modules[module_name].HingeMixDP
+    path = Path(__file__).resolve().parents[1] / "models" / "HingeMix-DP.py"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load HingeMix-DP from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module.HingeMixDP
+
+
+HingeMixDP = _load_hingemix_dp()
+
 MODEL_CARDS = {
     'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel, 'realmlp': RealMLPBaseline,
     'mlp': MLP, 'tmlp': tMLP, 'tabm': TabMModel, 'tjepa': TJEPABaseline, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
     'baseline_tmlp': tMLP,
     'ggpl_tmlp': GGPLTMLP,
+    'hingemix_dp': HingeMixDP,
     'ggpl_gtm': GGPLGTM,
     'ggpl_gtm_ablation': GGPLGTMAblation,
     'ggpl_gtm_ablation_full': GGPLGTMFullAblation,
