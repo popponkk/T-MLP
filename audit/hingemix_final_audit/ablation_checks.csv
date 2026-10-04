@@ -1,0 +1,5 @@
+﻿"ablation","display_name","tokenizer_type","use_graph","use_channel","readout","input_to_output_category","path_cut","source_evidence","runtime_validation"
+"full","HingeMix","ggpl","True","True","CLS (x[:, 0])","A","否","models/hingemix.py:53-74,133-140; models/ggpl_tmlp.py:119-150","未执行：无 Python、checkpoint 和数据"
+"no_graph","HingeMix-no_graph","ggpl","False","True","CLS (x[:, 0])","B","是：CLS 常量且 Channel 逐 token","models/hingemix_ablation.py:116-137,211-218; models/ggpl_tmlp.py:119-150","未执行：无 Python、checkpoint 和数据"
+"linear","HingeMix-linear","shared_linear","True","True","CLS (x[:, 0])","A","否","models/hingemix_ablation.py:39-64,116-137,211-218","未执行：无 Python、checkpoint 和数据"
+"linear_no_graph","HingeMix-linear_no_graph","shared_linear","False","True","CLS (x[:, 0])","B","是：CLS 常量且 Channel 逐 token","models/hingemix_ablation.py:39-64,116-137,211-218","未执行：无 Python、checkpoint 和数据"
