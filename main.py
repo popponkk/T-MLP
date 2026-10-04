@@ -2,6 +2,7 @@ import os
 import random
 import argparse
 import inspect
+import sys
 import numpy as np
 
 import torch
@@ -31,11 +32,19 @@ parser.add_argument('--output_suffix', type=str, default='')
 parser.add_argument('--ablation', type=str, default=None)
 args = parser.parse_args()
 
-if args.model == 'ggpl_gtm' and args.ablation is not None:
-    parser.error('--ablation is valid only with --model ggpl_gtm_ablation')
-if args.model != 'ggpl_gtm_ablation' and args.ablation is not None:
-    parser.error('--ablation is valid only with --model ggpl_gtm_ablation')
-if args.model == 'ggpl_gtm_ablation':
+FORMAL_MODELS = {'hingemix', 'hingemix_ablation'}
+ABLATION_MODELS = {'hingemix_ablation', 'ggpl_gtm_ablation'}
+
+
+def cli_provided(flag: str) -> bool:
+    return any(arg == flag or arg.startswith(f'{flag}=') for arg in sys.argv[1:])
+
+
+if args.model in {'hingemix', 'ggpl_gtm'} and args.ablation is not None:
+    parser.error('--ablation is valid only with --model hingemix_ablation')
+if args.model not in ABLATION_MODELS and args.ablation is not None:
+    parser.error('--ablation is valid only with --model hingemix_ablation')
+if args.model in ABLATION_MODELS:
     args.ablation = args.ablation or 'full'
 
 if args.device == 'cpu':
@@ -54,14 +63,16 @@ if args.model == 'tmlp' and any([args.feat_gate, args.pruning]):
     output_dir = f'results/{args.model}{sparsity_scheme}/{args.dataset}'
 else:
     output_dir = f'results/{args.model}/{args.dataset}'
-if args.model == 'ggpl_gtm_ablation':
+if args.model in ABLATION_MODELS:
+    is_new_formal_name = args.model == 'hingemix_ablation'
+    result_prefix = 'hingemix_ablation' if is_new_formal_name else 'ggpl_gtm_ablation'
     result_group = (
-        'ggpl_gtm_ablation_shared_linear'
+        f'{result_prefix}_shared_linear'
         if args.ablation in {
             'linear', 'linear_no_channel', 'linear_no_graph',
             'linear_no_graph_no_channel',
         }
-        else args.model
+        else result_prefix
     )
     output_dir = f'results/{result_group}/{args.ablation}/{args.dataset}'
 elif args.model in {
@@ -74,7 +85,7 @@ elif args.model in {
     output_dir = f'results/ggpl_gtm_ablation_shared_linear/{ablation}/{args.dataset}'
 if args.output_suffix:
     if (
-        args.model == 'ggpl_gtm_ablation'
+        args.model in ABLATION_MODELS
         and args.ablation in {
             'linear', 'linear_no_channel', 'linear_no_graph',
             'linear_no_graph_no_channel',
@@ -86,8 +97,14 @@ if args.output_suffix:
         'ggpl_gtm_ablation_linear_no_graph_no_channel',
     }:
         output_dir = output_dir.replace(
-            'results/ggpl_gtm_ablation_shared_linear',
-            f'results/ggpl_gtm_ablation_shared_linear{args.output_suffix}',
+            'results/ggpl_gtm_ablation_shared_linear'
+            if args.model == 'ggpl_gtm_ablation'
+            else 'results/hingemix_ablation_shared_linear',
+            (
+                'results/ggpl_gtm_ablation_shared_linear'
+                if args.model == 'ggpl_gtm_ablation'
+                else 'results/hingemix_ablation_shared_linear'
+            ) + args.output_suffix,
             1,
         )
     else:
@@ -113,7 +130,7 @@ if args.model != 'tmlp' or user_defined:
     config_file = args.config or f'configs/default/{args.model}.yaml'
     configs = load_config_from_file(config_file)
     configs.setdefault('training', configs.get('fit', {}))
-    if args.model == 'ggpl_gtm_ablation':
+    if args.model in ABLATION_MODELS:
         configs['model']['ablation'] = args.ablation
     # uniform model & training args
     if args.model not in ['xgboost', 'catboost', 'lightgbm']:
@@ -121,12 +138,19 @@ if args.model != 'tmlp' or user_defined:
             configs['model']['d_ffn_factor'] = 0.66
         if 'residual_dropout' in configs['model']:
             configs['model']['residual_dropout'] = 0.1
-        configs['training']['lr'] = args.lr # 1e-4
-        configs['training']['weight_decay'] = args.wd # 0
+        preserve_formal_defaults = args.model in FORMAL_MODELS
+        if not preserve_formal_defaults or cli_provided('--lr'):
+            configs['training']['lr'] = args.lr
+        if not preserve_formal_defaults or cli_provided('--wd'):
+            configs['training']['weight_decay'] = args.wd
         # search spaces (can be set)
-        if 'n_layers' in configs['model']:
+        if 'n_layers' in configs['model'] and (
+            not preserve_formal_defaults or cli_provided('--n_layers')
+        ):
             configs['model']['n_layers'] = args.n_layers
-        if 'd_token' in configs['model']:
+        if 'd_token' in configs['model'] and (
+            not preserve_formal_defaults or cli_provided('--d_token')
+        ):
             configs['model']['d_token'] = args.d_token
 else:
     print('adaptively set T-MLP model config')
@@ -153,7 +177,10 @@ def get_batch_size(dataset):
     if dataset.size('train') < 1e5: return 512
     return 1024
 try:
-    configs['training']['batch_size'] = args.batch_size
+    if args.model in FORMAL_MODELS and not cli_provided('--batch_size'):
+        configs['training'].setdefault('batch_size', 32)
+    else:
+        configs['training']['batch_size'] = args.batch_size
 except:
     print('adaptively set training batch size') 
     configs['training']['batch_size'] = get_batch_size(dataset)
@@ -167,7 +194,7 @@ configs['meta'] = {
 }
 print(
     'batch size: ', configs['training']['batch_size'],
-    '| lr: ', args.lr,
+    '| lr: ', configs['training']['lr'],
     '| patience: ', patience,
     '| use_auc: ', configs['meta']['use_auc'],
     '| use_r2: ', configs['meta']['use_r2'],
