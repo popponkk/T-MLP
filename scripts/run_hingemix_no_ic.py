@@ -102,6 +102,14 @@ def next_attempt(root: Path) -> Path:
     return attempts / f"attempt_{max(numbers, default=0) + 1:03d}"
 
 
+def test_target_path(repo: Path, dataset: str) -> str:
+    for part in ("datasets", "custom_datasets"):
+        path = repo / "data" / part / dataset / "y_test.npy"
+        if path.is_file():
+            return str(path)
+    return ""
+
+
 def lock(root: Path):
     root.mkdir(parents=True, exist_ok=True); path = root / ".task.lock"
     try:
@@ -134,7 +142,7 @@ def materialize(repo: Path, root: Path, task: dict) -> tuple[Path, Path]:
                  "tau": FINAL["graph_temperature"] if spec["kind"] == "hingemix" and spec["ablation"] not in {"no_graph", "linear_no_graph"} else None,
                  "d": FINAL["d_token"] if spec["kind"] == "hingemix" else None, "L": FINAL["n_layers"] if spec["kind"] == "hingemix" else None}
     atomic(attempt / "task.json", {**task, "attempt_dir": str(attempt), "effective_parameters": effective,
-                                    "test_target_path": str(next((repo / "data" / part / task["dataset"] / "y_test.npy" for part in ("datasets", "custom_datasets") if (repo / "data" / part / task["dataset"] / "y_test.npy").is_file()), "")})
+                                    "test_target_path": test_target_path(repo, task["dataset"])})
     return attempt, config_path
 
 
