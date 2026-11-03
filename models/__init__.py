@@ -1,124 +1,29 @@
-from .mlp import MLP
-from .ft_transformer import FTTransformer
-from .excel_former import ExcelFormer
+"""Active model implementations exposed through the project registry."""
+
 from .autoint import AutoInt
 from .dcnv2 import DCNv2
-from .node_model import NODE
-from .tmlp import tMLP
-from .tabm import TabMModel
-from .tjepa import TJEPABaseline
-from .moe_tmlp import MoETMLP
-from .tree_models import XGBoostModel, CatBoostModel, LightGBMModel
-from .realmlp import RealMLPBaseline
-from .tmlp_sr import SRTMLP
-from .tmlp_sr_pee import SRPEETMLP
-from .tmlp_sr_lgr import SRLGRTMLP
-from .pr_tmlp import PRTMLP
-from .hre_tmlp import HRETMLP
-from .agr_tmlp import AGRTMLP
-from .adr_tmlp import ADRTMLP
-from .sga_tmlp_lite import SGATMLPLite
-from .agsi_tmlp import AGSITMLP
-from .sr_agr_tmlp_lite import SRAGRTMLPLite
-from .agr_tmlp_rex2_lite import AGRTMLPRex2Lite
-from .agr_tmlp_rex2_guarded_lite import AGRTMLPRex2GuardedLite
-from .agr_tmlp_switch_lite import AGRTMLPSwitchLite
-from .agr_tmlp_switch_lite_td import AGRTMLPSwitchLiteTD
-from .agr_tmlp_switch_hardlite import AGRTMLPSwitchHardLite
-from .cgr_tmlp import CGRTMLP
-from .cgr_tmlp_v2 import CGRTMLPV2
-from .lar_tmlp import LARTMLP
-from .hlr_tmlp import HLRTMLP
-from .scgr_tmlp import SCGRTMLP
-from .cgr_tmlp_v3 import CGRTMLPV3
-from .cgr_tmlp_stage2 import CGRTMLPStage2
-from .nr_cgr_tmlp import NRCGRTMLP
-from .qcal_cgr_tmlp import QCALCGRTMLP
-from .ggpl_cgr_tmlp import GGPLCGRTMLP
-from .rgc_cgr_tmlp import RGCCGRTMLP
-from .agpl_cgr_tmlp import AGPLCGRTMLP
-from .apar_cgr_tmlp import APARCGRTMLP
-from .dpg_cgr_tmlp import DPGCGRTMLP
-from .ggtm_tmlp import GGTMTMLP
-from .sgg_cgr_tmlp import SGGCGRTMLP
-from .iggpl_cgr_tmlp import IGGPLCGRTMLP
-from .ggpl_tabm_cgr import GGPLTabMCGR
-from .excel_cgr_lite import ExcelCGRLite
-from .lgbm_cgr_hybrid import LGBMCGRHybrid
-from .ggpl_tmlp import GGPLTMLP
-from .ggpl_tmlp_layerscale import GGPLTMLPLayerScale
-from .ggpl_tmlp_sgurefine import GGPLTMLPSGURefine
-from .ggpl_tmlp_tokchan import GGPLTMLPTokChan
-from .ggpl_tmlp_tokchan_lite import GGPLTMLPTokChanLite
-from .ggpl_tmlp_bpfilm import GGPLTMLPBPFiLM
-from .ggpl_tmlp_tokchan_bpgate import GGPLTMLPTokChanBPGate
-from .ggpl_tmlp_slimtok import GGPLTMLPSlimTok
-from .ggpl_tmlp_fnet_slimtok import GGPLTMLPFNetSlimTok
-from .ggpl_tmlp_dlr_slimtok import GGPLTMLPDLRSlimTok
-from .ggpl_tmlp_osc_slimtok import GGPLTMLPOSCSlimTok
-from .ggpl_tmlp_anchor_slimtok import GGPLTMLPAnchorSlimTok
-from .ggpl_tmlp_lir_slimtok import GGPLTMLPLIRSlimTok
-from .ggpl_tmlp_gba_slimtok import GGPLTMLPGBASlimTok
-from .ggpl_tmlp_attn_slimtok import GGPLTMLPAttnSlimTok
-from .ggpl_tmlp_ssm_slimtok import GGPLTMLPSSMSlimTok
-from .ggpl_tmlp_tabm_slimtok import GGPLTMLPTabMSlimTok
-from .ggpl_tmlp_graph_slimtok import (
-    GGPLTMLPGraphSlimTok,
-    GGPLTMLPGraphSlimTokNoGGPL,
-)
-from .hingemix import HingeMix
-from .hingemix_ablation import HingeMixAblation
-from .hingemix_token_mlp import HingeMixTokenMLP
-# Legacy imports remain available through thin compatibility modules.
+from .excel_former import ExcelFormer
+from .ft_transformer import FTTransformer
 from .ggpl_gtm import GGPLGTM
 from .ggpl_gtm_ablation import GGPLGTMAblation
 from .ggpl_gtm_ablation_variants import (
     GGPLGTMFullAblation,
-    GGPLGTMNoChannelAblation,
-    GGPLGTMNoGraphAblation,
-    GGPLGTMNoGraphNoChannelAblation,
     GGPLGTMLinearAblation,
     GGPLGTMLinearNoChannelAblation,
     GGPLGTMLinearNoGraphAblation,
     GGPLGTMLinearNoGraphNoChannelAblation,
+    GGPLGTMNoChannelAblation,
+    GGPLGTMNoGraphAblation,
+    GGPLGTMNoGraphNoChannelAblation,
 )
-from .ggpl_dynonly_ablation_independent_nnlinear import (
-    GGPLDynOnlyAblationIndependentNNLinear,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_channel import (
-    GGPLDynOnlyAblationIndependentNNLinearNoChannel,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_graph import (
-    GGPLDynOnlyAblationIndependentNNLinearNoGraph,
-)
-from .ggpl_dynonly_ablation_independent_nnlinear_no_graph_no_channel import (
-    GGPLDynOnlyAblationIndependentNNLinearNoGraphNoChannel,
-)
-from .ggpl_tmlp_graph_slimtok_ablation import (
-    GGPLTMLPGraphSlimTokNoBlock,
-    GGPLTMLPGraphSlimTokNoChannel,
-    GGPLTMLPGraphSlimTokNoGraph,
-)
-from .ggpl_tmlp_swap_graph_slimtok import GGPLTMLPSwapGraphSlimTok
-from .ggpl_tmlp_dual_graph_slimtok import GGPLTMLPDualGraphSlimTok
-from .ggpl_tmlp_amix_graph_slimtok import GGPLTMLPAMixGraphSlimTok
-from .ggpl_tmlp_sparse_graph_slimtok import GGPLTMLPSparseGraphSlimTok
-from .ggpl_tmlp_graph_readout_slimtok import GGPLTMLPGraphReadoutSlimTok
-from .ggpl_tmlp_safe_graph_readout_slimtok import GGPLTMLPSafeGraphReadoutSlimTok
-from .ggpl_tmlp_pmu_graph_slimtok import GGPLTMLPPMUGraphSlimTok
-from .graph_slimtok_tmlp import (
-    GraphSlimTokTMLP,
-    GraphSlimTokTMLPDynamicOnly,
-    GraphSlimTokTMLPIdentityStatic,
-    GraphSlimTokTMLPNoBlock,
-    GraphSlimTokTMLPNoChannel,
-    GraphSlimTokTMLPNoGraph,
-    GraphSlimTokTMLPStaticOnly,
-    GraphSlimTokTMLPStaticPrior,
-)
-from .ggpl_tmlp_crossmix import GGPLTMLPCrossMix
-from .ggpl_tmlp_setmix import GGPLTMLPSetMix
-from .ggpl_tmlp_butterflytok import GGPLTMLPButterflyTok
-from .ggpl_tmlp_mlphead import GGPLTMLPMLPHead
-from .ggpl_tmlp_gluhead import GGPLTMLPGLUHead
-from .ggpl_tmlp_gfg import GGPLTMLPGFG
+from .ggpl_tmlp import GGPLTMLP
+from .hingemix import HingeMix
+from .hingemix_ablation import HingeMixAblation
+from .hingemix_token_mlp import HingeMixTokenMLP
+from .mlp import MLP
+from .node_model import NODE
+from .realmlp import RealMLPBaseline
+from .tabm import TabMModel
+from .tjepa import TJEPABaseline
+from .tmlp import tMLP
+from .tree_models import CatBoostModel, LightGBMModel, XGBoostModel

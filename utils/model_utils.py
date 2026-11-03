@@ -18,42 +18,63 @@ import torch.nn as nn
 import optuna
 
 from models import (
-    MLP, tMLP, TabMModel, TJEPABaseline, MoETMLP, FTTransformer, ExcelFormer, AutoInt, DCNv2, NODE,
-    XGBoostModel, CatBoostModel, LightGBMModel, RealMLPBaseline,
-    SRTMLP, SRPEETMLP, SRLGRTMLP, PRTMLP, HRETMLP, AGRTMLP, ADRTMLP, SGATMLPLite, AGSITMLP, SRAGRTMLPLite, AGRTMLPRex2Lite, AGRTMLPRex2GuardedLite, AGRTMLPSwitchLite, AGRTMLPSwitchLiteTD, AGRTMLPSwitchHardLite, CGRTMLP, CGRTMLPV2, LARTMLP, HLRTMLP, SCGRTMLP, CGRTMLPV3, CGRTMLPStage2, NRCGRTMLP, QCALCGRTMLP, GGPLCGRTMLP, RGCCGRTMLP, AGPLCGRTMLP, APARCGRTMLP, DPGCGRTMLP, GGTMTMLP, SGGCGRTMLP, IGGPLCGRTMLP, GGPLTabMCGR, ExcelCGRLite, LGBMCGRHybrid,
-    GGPLTMLP, HingeMix, HingeMixAblation, HingeMixTokenMLP, GGPLGTM, GGPLGTMAblation, GGPLGTMFullAblation, GGPLGTMNoChannelAblation, GGPLGTMNoGraphAblation, GGPLGTMNoGraphNoChannelAblation, GGPLGTMLinearAblation, GGPLGTMLinearNoChannelAblation, GGPLGTMLinearNoGraphAblation, GGPLGTMLinearNoGraphNoChannelAblation, GGPLDynOnlyAblationIndependentNNLinear, GGPLDynOnlyAblationIndependentNNLinearNoChannel, GGPLDynOnlyAblationIndependentNNLinearNoGraph, GGPLDynOnlyAblationIndependentNNLinearNoGraphNoChannel, GGPLTMLPLayerScale, GGPLTMLPSGURefine, GGPLTMLPTokChan, GGPLTMLPTokChanLite, GGPLTMLPBPFiLM, GGPLTMLPTokChanBPGate, GGPLTMLPSlimTok, GGPLTMLPFNetSlimTok, GGPLTMLPDLRSlimTok, GGPLTMLPOSCSlimTok, GGPLTMLPAnchorSlimTok, GGPLTMLPLIRSlimTok, GGPLTMLPGBASlimTok, GGPLTMLPAttnSlimTok, GGPLTMLPSSMSlimTok, GGPLTMLPTabMSlimTok, GGPLTMLPGraphSlimTok, GGPLTMLPGraphSlimTokNoGGPL, GGPLTMLPGraphSlimTokNoGraph, GGPLTMLPGraphSlimTokNoChannel, GGPLTMLPGraphSlimTokNoBlock, GGPLTMLPSwapGraphSlimTok, GGPLTMLPDualGraphSlimTok, GGPLTMLPAMixGraphSlimTok, GGPLTMLPSparseGraphSlimTok, GGPLTMLPGraphReadoutSlimTok, GGPLTMLPSafeGraphReadoutSlimTok, GGPLTMLPPMUGraphSlimTok, GraphSlimTokTMLP, GraphSlimTokTMLPDynamicOnly, GraphSlimTokTMLPIdentityStatic, GraphSlimTokTMLPNoBlock, GraphSlimTokTMLPNoChannel, GraphSlimTokTMLPNoGraph, GraphSlimTokTMLPStaticOnly, GraphSlimTokTMLPStaticPrior, GGPLTMLPCrossMix, GGPLTMLPSetMix, GGPLTMLPButterflyTok, GGPLTMLPMLPHead, GGPLTMLPGLUHead, GGPLTMLPGFG,
+    AutoInt,
+    CatBoostModel,
+    DCNv2,
+    ExcelFormer,
+    FTTransformer,
+    GGPLGTM,
+    GGPLGTMFullAblation,
+    GGPLGTMLinearAblation,
+    GGPLGTMLinearNoChannelAblation,
+    GGPLGTMLinearNoGraphAblation,
+    GGPLGTMLinearNoGraphNoChannelAblation,
+    GGPLGTMNoChannelAblation,
+    GGPLGTMNoGraphAblation,
+    GGPLGTMNoGraphNoChannelAblation,
+    GGPLGTMAblation,
+    GGPLTMLP,
+    HingeMix,
+    HingeMixAblation,
+    HingeMixTokenMLP,
+    LightGBMModel,
+    MLP,
+    NODE,
+    RealMLPBaseline,
+    TabMModel,
+    TJEPABaseline,
+    XGBoostModel,
+    tMLP,
 )
 from models.abstract import TabModel, check_dir
 from utils.data_utils import Dataset
 from data.processor import DataProcessor
 
 
-def _load_hingemix_dp():
-    """Load the user-required hyphenated model file under a legal module name."""
-    module_name = "models.hingemix_dp"
-    if module_name in sys.modules:
-        return sys.modules[module_name].HingeMixDP
-    path = Path(__file__).resolve().parents[1] / "models" / "HingeMix-DP.py"
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Unable to load HingeMix-DP from {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module.HingeMixDP
 
-
-HingeMixDP = _load_hingemix_dp()
-
+# Compatibility aliases remain registered only for historical GGPL-GTM results
+# and checkpoints. They resolve to the single maintained HingeMix implementation.
 MODEL_CARDS = {
-    'xgboost': XGBoostModel, 'catboost': CatBoostModel, 'lightgbm': LightGBMModel, 'realmlp': RealMLPBaseline,
-    'mlp': MLP, 'tmlp': tMLP, 'tabm': TabMModel, 'tjepa': TJEPABaseline, 'autoint': AutoInt, 'dcnv2': DCNv2, 'node': NODE,
+    'xgboost': XGBoostModel,
+    'catboost': CatBoostModel,
+    'lightgbm': LightGBMModel,
+    'realmlp': RealMLPBaseline,
+    'mlp': MLP,
+    'tmlp': tMLP,
     'baseline_tmlp': tMLP,
+    'tabm': TabMModel,
+    'tjepa': TJEPABaseline,
+    'autoint': AutoInt,
+    'dcnv2': DCNv2,
+    'node': NODE,
+    'ft-transformer': FTTransformer,
+    'excel-former': ExcelFormer,
+    'saint': None,
+    't2g-former': None,
     'ggpl_tmlp': GGPLTMLP,
     'hingemix': HingeMix,
     'hingemix_ablation': HingeMixAblation,
     'hingemix_token_mlp': HingeMixTokenMLP,
-    'hingemix_dp': HingeMixDP,
     'ggpl_gtm': GGPLGTM,
     'ggpl_gtm_ablation': GGPLGTMAblation,
     'ggpl_gtm_ablation_full': GGPLGTMFullAblation,
@@ -64,107 +85,6 @@ MODEL_CARDS = {
     'ggpl_gtm_ablation_linear_no_channel': GGPLGTMLinearNoChannelAblation,
     'ggpl_gtm_ablation_linear_no_graph': GGPLGTMLinearNoGraphAblation,
     'ggpl_gtm_ablation_linear_no_graph_no_channel': GGPLGTMLinearNoGraphNoChannelAblation,
-    'ggpl_dynonly_ablation_independent_nnlinear': GGPLDynOnlyAblationIndependentNNLinear,
-    'ggpl_dynonly_ablation_independent_nnlinear_no_channel': GGPLDynOnlyAblationIndependentNNLinearNoChannel,
-    'ggpl_dynonly_ablation_independent_nnlinear_no_graph': GGPLDynOnlyAblationIndependentNNLinearNoGraph,
-    'ggpl_dynonly_ablation_independent_nnlinear_no_graph_no_channel': GGPLDynOnlyAblationIndependentNNLinearNoGraphNoChannel,
-    'ggpl_tmlp_layerscale': GGPLTMLPLayerScale,
-    'ggpl_tmlp_sgurefine': GGPLTMLPSGURefine,
-    'ggpl_tmlp_tokchan': GGPLTMLPTokChan,
-    'ggpl_tmlp_tokchan_lite': GGPLTMLPTokChanLite,
-    'ggpl_tmlp_bpfilm': GGPLTMLPBPFiLM,
-    'ggpl_tmlp_tokchan_bpgate': GGPLTMLPTokChanBPGate,
-    'ggpl_tmlp_slimtok': GGPLTMLPSlimTok,
-    'ggpl_tmlp_fnet_slimtok': GGPLTMLPFNetSlimTok,
-    'ggpl_tmlp_dlr_slimtok': GGPLTMLPDLRSlimTok,
-    'ggpl_tmlp_osc_slimtok': GGPLTMLPOSCSlimTok,
-    'ggpl_tmlp_anchor_slimtok': GGPLTMLPAnchorSlimTok,
-    'ggpl_tmlp_lir_slimtok': GGPLTMLPLIRSlimTok,
-    'ggpl_tmlp_gba_slimtok': GGPLTMLPGBASlimTok,
-    'ggpl_tmlp_attn_slimtok': GGPLTMLPAttnSlimTok,
-    'ggpl_tmlp_ssm_slimtok': GGPLTMLPSSMSlimTok,
-    'ggpl_tmlp_tabm_slimtok': GGPLTMLPTabMSlimTok,
-    'ggpl_tmlp_graph_slimtok': GGPLTMLPGraphSlimTok,
-    'ggpl_tmlp_graph_slimtok_no_ggpl': GGPLTMLPGraphSlimTokNoGGPL,
-    'ggpl_tmlp_graph_slimtok_no_graph': GGPLTMLPGraphSlimTokNoGraph,
-    'ggpl_tmlp_graph_slimtok_no_channel': GGPLTMLPGraphSlimTokNoChannel,
-    'ggpl_tmlp_graph_slimtok_no_block': GGPLTMLPGraphSlimTokNoBlock,
-    'ggpl_tmlp_swap_graph_slimtok': GGPLTMLPSwapGraphSlimTok,
-    'ggpl_tmlp_dual_graph_slimtok': GGPLTMLPDualGraphSlimTok,
-    'ggpl_tmlp_amix_graph_slimtok': GGPLTMLPAMixGraphSlimTok,
-    'ggpl_tmlp_sparse_graph_slimtok': GGPLTMLPSparseGraphSlimTok,
-    'ggpl_tmlp_graph_readout_slimtok': GGPLTMLPGraphReadoutSlimTok,
-    'ggpl_tmlp_safe_graph_readout_slimtok': GGPLTMLPSafeGraphReadoutSlimTok,
-    'ggpl_tmlp_pmu_graph_slimtok': GGPLTMLPPMUGraphSlimTok,
-    'graph_slimtok_tmlp': GraphSlimTokTMLP,
-    'graph_slimtok_tmlp_no_graph': GraphSlimTokTMLPNoGraph,
-    'graph_slimtok_tmlp_no_channel': GraphSlimTokTMLPNoChannel,
-    'graph_slimtok_tmlp_no_block': GraphSlimTokTMLPNoBlock,
-    'graph_slimtok_tmlp_dynamic_only': GraphSlimTokTMLPDynamicOnly,
-    'graph_slimtok_tmlp_static_only': GraphSlimTokTMLPStaticOnly,
-    'graph_slimtok_tmlp_identity_static': GraphSlimTokTMLPIdentityStatic,
-    'graph_slimtok_tmlp_static_prior': GraphSlimTokTMLPStaticPrior,
-    'ggpl_tmlp_crossmix': GGPLTMLPCrossMix,
-    'ggpl_tmlp_setmix': GGPLTMLPSetMix,
-    'ggpl_tmlp_butterflytok': GGPLTMLPButterflyTok,
-    'ggpl_tmlp_mlphead': GGPLTMLPMLPHead,
-    'ggpl_tmlp_gluhead': GGPLTMLPGLUHead,
-    'ggpl_tmlp_gfg': GGPLTMLPGFG,
-    'cgr_tmlp': CGRTMLP,
-    'cgr_tmlp_stage2': CGRTMLPStage2,
-    'nr_cgr_tmlp': NRCGRTMLP,
-    'qcal_cgr_tmlp': QCALCGRTMLP,
-    'ggpl_cgr_tmlp': GGPLCGRTMLP,
-    'rgc_cgr_tmlp': RGCCGRTMLP,
-    'agpl_cgr_tmlp': AGPLCGRTMLP,
-    'apar_cgr_tmlp': APARCGRTMLP,
-    'dpg_cgr_tmlp': DPGCGRTMLP,
-    'ggtm_tmlp': GGTMTMLP,
-    'sgg_cgr_tmlp': SGGCGRTMLP,
-    'iggpl_cgr_tmlp': IGGPLCGRTMLP,
-    'ggpl_tabm_cgr': GGPLTabMCGR,
-    'excel_cgr_lite': ExcelCGRLite,
-    'lgbm_cgr_hybrid': LGBMCGRHybrid,
-    'cgr_tmlp_v2': CGRTMLPV2,
-    'cgr_tmlp_v3': CGRTMLPV3,
-    'lar_tmlp': LARTMLP,
-    'hlr_tmlp': HLRTMLP,
-    'scgr_tmlp': SCGRTMLP,
-    'agr_tmlp_switch_lite_td': AGRTMLPSwitchLiteTD,
-    'agr_tmlp_switch_hardlite': AGRTMLPSwitchHardLite,
-    'agr_tmlp_switch_lite': AGRTMLPSwitchLite,
-    'agr_tmlp_rex2_guarded_lite': AGRTMLPRex2GuardedLite,
-    'agr_tmlp_rex2_lite': AGRTMLPRex2Lite,
-    'sr_agr_tmlp_lite': SRAGRTMLPLite,
-    'agsi_tmlp': AGSITMLP,
-    'sga_tmlp_lite': SGATMLPLite,
-    'sga_tmlp_lite_no_beta_reg': SGATMLPLite,
-    'sga_tmlp_lite_no_corr_reg': SGATMLPLite,
-    'sga_tmlp_lite_no_featmix': SGATMLPLite,
-    'sga_tmlp_lite_topk4': SGATMLPLite,
-    'sga_tmlp_lite_topk12': SGATMLPLite,
-    'adr_tmlp': ADRTMLP,
-    'agr_tmlp': AGRTMLP,
-    'agr_tmlp_no_err_head': AGRTMLP,
-    'agr_tmlp_no_gate_reg': AGRTMLP,
-    'agr_tmlp_no_res_reg': AGRTMLP,
-    'agr_tmlp_gate_from_h_only': AGRTMLP,
-    'agr_tmlp_softgate': AGRTMLP,
-    'pr_tmlp_residual': PRTMLP,
-    'pr_tmlp_residual_no_sparse': PRTMLP,
-    'pr_tmlp_residual_no_balance': PRTMLP,
-    'pr_tmlp_residual_no_sep': PRTMLP,
-    'pr_tmlp_pure_experts': PRTMLP,
-    'hre_tmlp': HRETMLP,
-    'hre_tmlp_no_balance': HRETMLP,
-    'hre_tmlp_no_div': HRETMLP,
-    'hre_tmlp_no_alpha': HRETMLP,
-    'hre_tmlp_no_global_residual': HRETMLP,
-    'hre_tmlp_dense_routing': HRETMLP,
-    'moe_tmlp': MoETMLP, 'moe_tmlp_no_sparse': MoETMLP, 'moe_tmlp_no_diversity': MoETMLP,
-    'ft-transformer': FTTransformer, 'saint': None,
-    'tmlp-sr': SRTMLP, 'tmlp-sr-pee': SRPEETMLP, 'tmlp-sr-lgr': SRLGRTMLP,
-    't2g-former': None, 'excel-former': ExcelFormer,
 }
 HPOLib = Literal['optuna', 'hyperopt'] # TODO: add 'hyperopt' support
 
@@ -263,214 +183,8 @@ def make_baseline(
             model_config=model_config, 
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset)
-    if model_name.startswith('pr_tmlp'):
-        return PRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-            variant_name=model_name,
-        )
-    if model_name == 'agr_tmlp_rex2_lite':
-        return AGRTMLPRex2Lite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agr_tmlp_rex2_guarded_lite':
-        return AGRTMLPRex2GuardedLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agr_tmlp_switch_lite':
-        return AGRTMLPSwitchLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agr_tmlp_switch_lite_td':
-        return AGRTMLPSwitchLiteTD(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agr_tmlp_switch_hardlite':
-        return AGRTMLPSwitchHardLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'cgr_tmlp':
-        return CGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'cgr_tmlp_stage2':
-        return CGRTMLPStage2(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'nr_cgr_tmlp':
-        return NRCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'qcal_cgr_tmlp':
-        return QCALCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'ggpl_cgr_tmlp':
-        return GGPLCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'rgc_cgr_tmlp':
-        return RGCCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agpl_cgr_tmlp':
-        return AGPLCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'apar_cgr_tmlp':
-        return APARCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'dpg_cgr_tmlp':
-        return DPGCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'ggtm_tmlp':
-        return GGTMTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'sgg_cgr_tmlp':
-        return SGGCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'iggpl_cgr_tmlp':
-        return IGGPLCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'ggpl_tabm_cgr':
-        return GGPLTabMCGR(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'excel_cgr_lite':
-        return ExcelCGRLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'lgbm_cgr_hybrid':
-        return LGBMCGRHybrid(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'cgr_tmlp_v2':
-        return CGRTMLPV2(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'cgr_tmlp_v3':
-        return CGRTMLPV3(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'lar_tmlp':
-        return LARTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'hlr_tmlp':
-        return HLRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'scgr_tmlp':
-        return SCGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'sr_agr_tmlp_lite':
-        return SRAGRTMLPLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name == 'agsi_tmlp':
-        return AGSITMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name.startswith('agr_tmlp'):
-        return AGRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-            variant_name=model_name,
-        )
-    if model_name == 'adr_tmlp':
-        return ADRTMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-        )
-    if model_name.startswith('sga_tmlp_lite'):
-        return SGATMLPLite(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-            variant_name=model_name,
-        )
-    if model_name.startswith('hre_tmlp'):
-        return HRETMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset,
-            variant_name=model_name,
-        )
-    if model_name.startswith('moe_tmlp'):
-        return MoETMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset)
     if model_name == 'baseline_tmlp':
         return tMLP(
-            model_config=model_config,
-            n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
-            feat_gate=feat_gate, pruning=pruning, dataset=dataset)
-    if model_name == 'ggpl_tmlp_gfg':
-        return GGPLTMLPGFG(
             model_config=model_config,
             n_num_features=n_num, categories=cat_card, n_labels=n_labels, device=device,
             feat_gate=feat_gate, pruning=pruning, dataset=dataset)

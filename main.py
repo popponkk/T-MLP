@@ -117,7 +117,7 @@ if args.output_dir is not None:
 print('preparing dataset: ', args.dataset)
 append_ids = (
     args.feat_gate == 'xgb_dropout'
-    and args.model in ['tmlp', 'ggpl_tmlp_gfg']
+    and args.model == 'tmlp'
 )
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
