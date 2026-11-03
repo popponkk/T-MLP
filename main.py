@@ -32,7 +32,7 @@ parser.add_argument('--output_suffix', type=str, default='')
 parser.add_argument('--ablation', type=str, default=None)
 args = parser.parse_args()
 
-FORMAL_MODELS = {'hingemix', 'hingemix_ablation'}
+FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_token_mlp'}
 ABLATION_MODELS = {'hingemix_ablation', 'ggpl_gtm_ablation'}
 
 

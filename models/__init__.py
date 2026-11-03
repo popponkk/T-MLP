@@ -68,6 +68,7 @@ from .ggpl_tmlp_graph_slimtok import (
 )
 from .hingemix import HingeMix
 from .hingemix_ablation import HingeMixAblation
+from .hingemix_token_mlp import HingeMixTokenMLP
 # Legacy imports remain available through thin compatibility modules.
 from .ggpl_gtm import GGPLGTM
 from .ggpl_gtm_ablation import GGPLGTMAblation
