@@ -391,6 +391,11 @@ class HingeMixAblationV2(TabModel):
             defaults.update(token_mlp_ratio=2.0)
         for key, value in defaults.items():
             model_config.setdefault(key, value)
+        if is_ggpl:
+            # Keep these explicit for the adapter while retaining the complete
+            # effective snapshot below for result provenance.
+            metadata["num_breakpoints"] = int(model_config["num_breakpoints"])
+            metadata["learnable_breakpoints"] = bool(model_config["learnable_breakpoints"])
         metadata["effective_model_config"] = dict(model_config)
         self.saved_model_config = metadata
         return model_config
