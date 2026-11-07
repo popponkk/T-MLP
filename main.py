@@ -32,8 +32,8 @@ parser.add_argument('--output_suffix', type=str, default='')
 parser.add_argument('--ablation', type=str, default=None)
 args = parser.parse_args()
 
-FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_token_mlp'}
-ABLATION_MODELS = {'hingemix_ablation', 'ggpl_gtm_ablation'}
+FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_ablation_v2', 'hingemix_token_mlp'}
+ABLATION_MODELS = {'hingemix_ablation', 'hingemix_ablation_v2', 'ggpl_gtm_ablation'}
 
 
 def cli_provided(flag: str) -> bool:
@@ -41,10 +41,12 @@ def cli_provided(flag: str) -> bool:
 
 
 if args.model in {'hingemix', 'ggpl_gtm'} and args.ablation is not None:
-    parser.error('--ablation is valid only with --model hingemix_ablation')
+    parser.error('--ablation is valid only with an ablation model')
 if args.model not in ABLATION_MODELS and args.ablation is not None:
-    parser.error('--ablation is valid only with --model hingemix_ablation')
-if args.model in ABLATION_MODELS:
+    parser.error('--ablation is valid only with an ablation model')
+if args.model == 'hingemix_ablation_v2':
+    output_dir = f'results/hingemix_ablation_v2/{args.ablation}/{args.dataset}'
+elif args.model in ABLATION_MODELS:
     args.ablation = args.ablation or 'full'
 
 if args.device == 'cpu':

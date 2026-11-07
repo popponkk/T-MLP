@@ -19,6 +19,7 @@ from .ggpl_gtm_ablation_variants import (
 from .ggpl_tmlp import GGPLTMLP
 from .hingemix import HingeMix
 from .hingemix_ablation import HingeMixAblation
+from .hingemix_ablation_v2 import HingeMixAblationV2
 from .hingemix_token_mlp import HingeMixTokenMLP
 from .mlp import MLP
 from .node_model import NODE
