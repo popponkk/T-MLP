@@ -110,6 +110,7 @@ class DataProcessor:
         benchmark_name: Optional[str] = None, 
         seed: int = 42, 
         cache_dir: Optional[str] = None,
+        train_subset_indices: Optional[Union[str, Path, np.ndarray]] = None,
         add_ids: bool = False, # add sample ids
         one_hot_label: bool = False, # for multi-class labels
         label_smoothing: float = 0.0,
@@ -134,6 +135,46 @@ class DataProcessor:
                 if you want to use a custom dataset (from csv file), using `add_custom_dataset`")
         
         dataset = Dataset.from_dir(data_path)
+        subset_metadata = None
+        if train_subset_indices is not None:
+            if isinstance(train_subset_indices, (str, Path)):
+                subset_path = Path(train_subset_indices)
+                indices = np.load(subset_path)
+                subset_source = str(subset_path)
+            else:
+                indices = np.asarray(train_subset_indices)
+                subset_source = "in_memory"
+            if indices.ndim != 1 or not np.issubdtype(indices.dtype, np.integer):
+                raise ValueError("train_subset_indices must be a one-dimensional integer array")
+            indices = indices.astype(np.int64, copy=False)
+            train_size = dataset.size('train')
+            if len(indices) == 0:
+                raise ValueError("train_subset_indices must select at least one training row")
+            if np.any(indices < 0) or np.any(indices >= train_size):
+                raise ValueError(
+                    f"train_subset_indices contains values outside [0, {train_size})"
+                )
+            if len(np.unique(indices)) != len(indices):
+                raise ValueError("train_subset_indices must not contain duplicate rows")
+
+            def subset_train(values):
+                if values is None:
+                    return None
+                return {split: values[split][indices] if split == 'train' else values[split]
+                        for split in values}
+
+            dataset = replace(
+                dataset,
+                X_num=subset_train(dataset.X_num),
+                X_cat=subset_train(dataset.X_cat),
+                y=subset_train(dataset.y),
+                ids=subset_train(dataset.ids),
+            )
+            subset_metadata = {
+                'source': subset_source,
+                'source_train_size': train_size,
+                'selected_train_size': len(indices),
+            }
         # default preprocess settings
         num_nan_policy = 'mean' if dataset.X_num is not None and \
             any(np.isnan(dataset.X_num[spl]).any() for spl in dataset.X_num) else None
@@ -172,7 +213,8 @@ class DataProcessor:
         processor.save(
             Path(output_dir) / 'data_config.yaml',
             benchmark=str(benchmark_name),
-            dataset=dataset_name
+            dataset=dataset_name,
+            train_subset=subset_metadata,
         )
         if add_ids:
             ids = {

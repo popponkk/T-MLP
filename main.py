@@ -30,6 +30,18 @@ parser.add_argument('--config', type=str, default=None)
 parser.add_argument('--output_dir', type=str, default=None)
 parser.add_argument('--output_suffix', type=str, default='')
 parser.add_argument('--ablation', type=str, default=None)
+parser.add_argument(
+    '--train-subset-indices',
+    type=str,
+    default=None,
+    help='Optional .npy file of row positions within the saved training split.',
+)
+parser.add_argument(
+    '--preprocess-cache-dir',
+    type=str,
+    default=None,
+    help='Optional isolated cache directory for preprocessing artifacts.',
+)
 args = parser.parse_args()
 
 FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_ablation_v2', 'hingemix_token_mlp'}
@@ -123,7 +135,10 @@ append_ids = (
 )
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
-    seed=args.seed if args.data_seed is None else args.data_seed, add_ids=append_ids,
+    seed=args.seed if args.data_seed is None else args.data_seed,
+    cache_dir=args.preprocess_cache_dir,
+    train_subset_indices=args.train_subset_indices,
+    add_ids=append_ids,
 )
 
 # model config
