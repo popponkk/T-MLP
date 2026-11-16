@@ -1,0 +1,41 @@
+# Copy this file and replace every placeholder using an actual run-metadata table.
+# Values below are intentionally invalid for a real run: preparation refuses to
+# infer threads, sizes, or sample IDs from row order or target values.
+experiment_id: hpcg2_threads_low_to_high
+derived_dataset_name: hingemix_extrapolation_hpcg2_threads
+
+source:
+  dataset: hpcg2
+  # Absolute paths are accepted. Relative paths are resolved against project root.
+  metadata_path: path/to/hpcg2_run_metadata.csv
+  metadata_format: csv
+  # Must exactly match the saved idx_train/idx_val/idx_test values.
+  metadata_id_column: sample_id
+  # Set true only after confirming the source NPY arrays are raw inputs, rather
+  # than arrays transformed using all samples. --inspect does not need this.
+  raw_input_confirmed: false
+  server_column: server
+  server_value: SERVER_NAME_TO_FILL
+  workload_column: workload
+  workload_value: HPCG
+
+extrapolation:
+  # A real, ordered run-configuration column, not a monitoring feature.
+  parameter: threads
+  train_values: [1, 2]
+  validation_values: [4]
+  test_values: [8, 16]
+  # Fix confounding configuration fields when possible. Values are compared exactly.
+  fixed_filters:
+    processes: 1
+    problem_size: 8192
+  # Define a complete configuration group. Repeated captures of one group must
+  # remain together; run_id alone is deliberately rejected as the only field.
+  group_fields: [server, workload, threads, processes, problem_size]
+  # Saved for audit; preparation reports but does not silently filter these.
+  distribution_fields: [processes, problem_size]
+  split_seed: 42
+
+# Selected by availability and existing formal registrations, not test performance.
+models: [hingemix, lightgbm, mlp]
+training_seeds: [0, 1, 2, 3, 4]
