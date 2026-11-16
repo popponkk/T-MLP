@@ -35,7 +35,13 @@ def model_config(document: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(document, dict):
         return {}
     value = document.get("model")
-    return value if isinstance(value, dict) else document
+    if not isinstance(value, dict):
+        return document
+    # HingeMix ablation-v2 stores the resolved constructor arguments here,
+    # while the outer mapping records the ablation identity.  Merge both so
+    # formal checks validate effective, rather than merely requested, values.
+    effective = value.get("effective_model_config")
+    return {**value, **effective} if isinstance(effective, dict) else value
 
 
 def hinge_config_ok(config: dict[str, Any], training: dict[str, Any]) -> tuple[bool, str]:

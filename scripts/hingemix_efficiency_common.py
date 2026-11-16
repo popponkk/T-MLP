@@ -125,6 +125,9 @@ def config_model_name(path: Path | None) -> str | None:
     document = read_yaml(path) if path else None
     model = (document or {}).get("model")
     name = model.get("model_name") if isinstance(model, dict) else None
+    if name is None and isinstance(model, dict):
+        requested = model.get("requested_model_config")
+        name = requested.get("model_name") if isinstance(requested, dict) else None
     return name if isinstance(name, str) else None
 
 
