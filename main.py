@@ -42,21 +42,6 @@ parser.add_argument(
     default=None,
     help='Optional isolated cache directory for preprocessing artifacts.',
 )
-parser.add_argument(
-    '--no-test-during-fit',
-    action='store_true',
-    help='Do not evaluate the test split while fitting; final test evaluation still runs after best-checkpoint reload.',
-)
-parser.add_argument(
-    '--save-evaluation-arrays',
-    action='store_true',
-    help='Save final test predictions and targets on the original target scale for audit-only experiment runners.',
-)
-parser.add_argument(
-    '--strict-train-preprocessing',
-    action='store_true',
-    help='Select preprocessing policies using training data only (for isolated extrapolation splits).',
-)
 args = parser.parse_args()
 
 FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_ablation_v2', 'hingemix_token_mlp'}
@@ -153,7 +138,6 @@ dataset = DataProcessor.load_preproc_default(
     seed=args.seed if args.data_seed is None else args.data_seed,
     cache_dir=args.preprocess_cache_dir,
     train_subset_indices=args.train_subset_indices,
-    strict_train_preprocessing=args.strict_train_preprocessing,
     add_ids=append_ids,
 )
 
@@ -275,9 +259,7 @@ call_with_supported_kwargs(
     model.fit,
     X_num=datas['train'][0], X_cat=datas['train'][1], ys=datas['train'][2], ids=datas['train'][3],
     y_std=y_std,
-    # The extrapolation runner disables in-fit test reporting so test data is only
-    # touched after validation has selected the best checkpoint.
-    eval_set=(datas['val'],) if args.no_test_during_fit else (datas['val'], datas['test']),
+    eval_set=(datas['val'], datas['test']), # add test set to report metrics each best epoch
     patience=patience, task=dataset.task_type.value,
     training_args=configs['training'],
     meta_args=configs['meta'],
@@ -294,19 +276,6 @@ predictions, results = call_with_supported_kwargs(
 )
 model.save_prediction(output_dir, results)
 model.save_predictions_array(output_dir, predictions, file='test_predictions')
-if args.save_evaluation_arrays:
-    prediction_array = np.asarray(predictions).reshape(-1)
-    target_array = np.asarray(dataset.y['test']).reshape(-1)
-    if dataset.is_regression:
-        y_mean = float(dataset.y_info.get('mean', 0.0))
-        y_scale = float(dataset.y_info.get('std', 1.0))
-        prediction_array = prediction_array * y_scale + y_mean
-        target_array = target_array * y_scale + y_mean
-    np.savez(
-        os.path.join(output_dir, 'test_evaluation_arrays.npz'),
-        prediction=prediction_array,
-        target=target_array,
-    )
 
 print("=== Prediction (best metric) ===")
 print(results)

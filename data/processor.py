@@ -111,7 +111,6 @@ class DataProcessor:
         seed: int = 42, 
         cache_dir: Optional[str] = None,
         train_subset_indices: Optional[Union[str, Path, np.ndarray]] = None,
-        strict_train_preprocessing: bool = False,
         add_ids: bool = False, # add sample ids
         one_hot_label: bool = False, # for multi-class labels
         label_smoothing: float = 0.0,
@@ -177,11 +176,8 @@ class DataProcessor:
                 'selected_train_size': len(indices),
             }
         # default preprocess settings
-        preprocessing_splits = ('train',) if strict_train_preprocessing else tuple(dataset.y)
-        # The extrapolation protocol uses the strict mode so even data-dependent
-        # preprocessing policy selection never inspects validation/test arrays.
         num_nan_policy = 'mean' if dataset.X_num is not None and \
-            any(np.isnan(dataset.X_num[spl]).any() for spl in preprocessing_splits) else None
+            any(np.isnan(dataset.X_num[spl]).any() for spl in dataset.X_num) else None
         cat_nan_policy = None
         if model_name in ['xgboost', 'catboost', 'lightgbm']: # for tree models or other sklearn algorithms
             normalization = None
@@ -194,7 +190,7 @@ class DataProcessor:
             # dtype: int -> bool, dtype: string -> array[bool], dtype: object -> np.load error
             # CURRENT: uniformly using string type to store catgorical features
             if dataset.X_cat is not None and \
-                any((dataset.X_cat[spl] == CAT_MISSING_VALUE).any() for spl in preprocessing_splits):
+                any((dataset.X_cat[spl] == CAT_MISSING_VALUE).any() for spl in dataset.X_cat):
                 cat_nan_policy = 'most_frequent'
             cat_min_frequency = None
             cat_encoding = None
@@ -219,7 +215,6 @@ class DataProcessor:
             benchmark=str(benchmark_name),
             dataset=dataset_name,
             train_subset=subset_metadata,
-            strict_train_preprocessing=strict_train_preprocessing,
         )
         if add_ids:
             ids = {
