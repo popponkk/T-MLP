@@ -19,6 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-root", default="results/hingemix_efficiency")
     parser.add_argument("--output-root", default="results/hingemix_efficiency_summary")
+    parser.add_argument("--formal-only", action="store_true", help="Include only the formal protocol: warmup=20, rounds=5, requests=100")
     return parser.parse_args()
 
 
@@ -39,6 +40,7 @@ def main() -> None:
     input_root, output_root = Path(args.input_root).resolve(), Path(args.output_root).resolve()
     measurements: list[dict[str, str]] = []
     skipped_legacy: list[str] = []
+    skipped_nonformal: list[str] = []
     # ``tasks`` is the resumable layout. ``benchmark_*`` preserves compatibility
     # with short measurements made by the initial development version.
     for path in sorted(list(input_root.glob("tasks/*/summary.csv")) + list(input_root.glob("benchmark_*/summary.csv"))):
@@ -50,8 +52,20 @@ def main() -> None:
         if protocol.get("version") != 2:
             skipped_legacy.append(f"{path.parent}: protocol version {protocol.get('version')!r} is not accepted")
             continue
+        is_formal = (
+            protocol.get("warmup") == 20
+            and protocol.get("rounds") == 5
+            and protocol.get("requests_per_round") == 100
+        )
+        if args.formal_only and not is_formal:
+            skipped_nonformal.append(str(path.parent))
+            continue
         for row in read_rows(path):
             row["measurement_path"] = str(path.parent)
+            row["warmup"] = protocol.get("warmup", "")
+            row["rounds"] = protocol.get("rounds", "")
+            row["requests_per_round"] = protocol.get("requests_per_round", "")
+            row["protocol_kind"] = "formal" if is_formal else "smoke_or_custom"
             measurements.append(row)
     stamp = dt.datetime.now().strftime("summary_%Y%m%d_%H%M%S")
     destination = output_root / stamp
@@ -59,7 +73,7 @@ def main() -> None:
     write_csv(destination / "per_measurement.csv", measurements, per_fields)
 
     groups: dict[tuple[str, ...], list[dict[str, str]]] = defaultdict(list)
-    keys = ("model", "dataset", "seed", "device", "scope", "batch_size", "protocol_fingerprint", "contamination_status")
+    keys = ("model", "dataset", "seed", "device", "scope", "batch_size", "warmup", "rounds", "requests_per_round", "protocol_fingerprint", "contamination_status")
     for row in measurements:
         if row.get("status") == "measured":
             groups[tuple(row.get(key, "") for key in keys)].append(row)
@@ -78,7 +92,9 @@ def main() -> None:
     write_json(destination / "integrity.json", {
         "input_root": str(input_root), "measurement_rows": len(measurements),
         "measured_rows": sum(row.get("status") == "measured" for row in measurements),
-        "groups": len(summaries), "skipped_legacy_or_invalid_measurements": skipped_legacy,
+        "groups": len(summaries), "formal_only": args.formal_only,
+        "skipped_legacy_or_invalid_measurements": skipped_legacy,
+        "skipped_nonformal_measurements": skipped_nonformal,
         "rule": "Only rows with identical model, dataset, training seed, device, scope, batch size, protocol fingerprint, and contamination status are aggregated.",
     })
     (destination / "report.md").write_text(
