@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import hashlib
 import os
 import platform
 import subprocess
@@ -144,6 +145,27 @@ def prediction_fn(model, x_num, x_cat, device: str, y_info: dict[str, Any]):
     return run, is_dnn
 
 
+def dataset_content_fingerprint(dataset) -> str:
+    """Hash all transformed split content relevant to restored inference."""
+    digest = hashlib.sha256()
+    for name in ("X_num", "X_cat", "y", "ids"):
+        value = getattr(dataset, name, None)
+        digest.update(name.encode("utf-8"))
+        if value is None:
+            digest.update(b"<none>")
+            continue
+        for split in sorted(value):
+            array = np.ascontiguousarray(value[split])
+            digest.update(split.encode("utf-8"))
+            digest.update(str(array.dtype).encode("ascii"))
+            digest.update(repr(array.shape).encode("ascii"))
+            digest.update(array.tobytes())
+    digest.update(json.dumps(getattr(dataset, "y_info", {}), sort_keys=True, default=str).encode("utf-8"))
+    task = getattr(dataset, "task_type", None)
+    digest.update(str(getattr(task, "value", task)).encode("utf-8"))
+    return digest.hexdigest()
+
+
 def restore_verified_candidate(record: dict[str, str], candidates, device: str):
     """Select only the cache whose restored final prediction matches history.
 
@@ -169,9 +191,26 @@ def restore_verified_candidate(record: dict[str, str], candidates, device: str):
                 rejected.append(f"{cache_path}: prediction mismatch max_abs_diff={max_abs}")
         except Exception as error:
             rejected.append(f"{cache_path}: {type(error).__name__}: {error}")
+    if len(verified) > 1:
+        content = {dataset_content_fingerprint(item[1]) for item in verified}
+        if len(content) == 1:
+            chosen = min(verified, key=lambda item: str(item[0]))
+            print(
+                "equivalent_cache_copies:",
+                "; ".join(str(item[0]) for item in verified),
+                flush=True,
+            )
+            return chosen
     if len(verified) != 1:
         detail = "; ".join(rejected) or "multiple candidates reproduced the saved prediction"
-        raise RuntimeError(f"Expected exactly one cache verified against saved predictions; found {len(verified)}. {detail}")
+        fingerprints = "; ".join(
+            f"{item[0]}: content_sha256={dataset_content_fingerprint(item[1])}"
+            for item in verified
+        )
+        raise RuntimeError(
+            f"Expected exactly one cache verified against saved predictions; found {len(verified)}. "
+            f"{detail}. {fingerprints}"
+        )
     return verified[0]
 
 
