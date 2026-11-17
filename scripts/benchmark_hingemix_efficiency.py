@@ -209,7 +209,7 @@ def main() -> None:
         device = "cpu"
     cache_path, dataset = load_cached_dataset(record)
     identity = {
-        "version": 1, "artifact_fingerprint": record["artifact_fingerprint"],
+        "version": 2, "artifact_fingerprint": record["artifact_fingerprint"],
         "cache_sha256": sha256_file(cache_path), "model": record["model"],
         "dataset": record["dataset"], "seed": record["seed"], "device": args.device,
         "gpu": args.gpu if args.device == "cuda" else None, "scope": "model_only",
@@ -262,22 +262,21 @@ def main() -> None:
         synchronize(args.device)
         durations = []
         for timing_round in range(args.rounds):
-            round_total = 0.0
             for request in range(args.requests):
                 positions = batches[request % len(batches)]
                 before = time.perf_counter_ns()
                 _ = run(None if x_num is None else x_num[positions], None if x_cat is None else x_cat[positions])
                 synchronize(args.device)
                 duration = (time.perf_counter_ns() - before) / 1e6
-                round_total += duration; durations.append(duration)
+                durations.append(duration)
                 raw_rows.append({"model": record["model"], "dataset": record["dataset"], "seed": record["seed"], "device": args.device, "scope": "model_only", "batch_size": batch_size, "timing_round": timing_round, "request": request, "latency_ms": duration, "request_positions": ",".join(map(str, positions.tolist()))})
-            summaries.append({"model": record["model"], "dataset": record["dataset"], "seed": record["seed"], "device": args.device, "scope": "model_only", "batch_size": batch_size, "status": "measured", "n_requests": len(durations), "n_samples": len(durations) * batch_size, "latency_p50_ms": float(np.percentile(durations, 50)), "latency_p95_ms": float(np.percentile(durations, 95)), "mean_request_latency_ms": float(np.mean(durations)), "throughput_samples_per_second": float(len(durations) * batch_size / (sum(durations) / 1000.0)), "batch_average_sample_cost_ms": float(np.mean(durations) / batch_size), "test_size": test_size, "request_sequence_reused": True, "contamination_status": contamination})
+        summaries.append({"model": record["model"], "dataset": record["dataset"], "seed": record["seed"], "device": args.device, "scope": "model_only", "batch_size": batch_size, "status": "measured", "n_requests": len(durations), "n_samples": len(durations) * batch_size, "latency_p50_ms": float(np.percentile(durations, 50)), "latency_p95_ms": float(np.percentile(durations, 95)), "mean_request_latency_ms": float(np.mean(durations)), "throughput_samples_per_second": float(len(durations) * batch_size / (sum(durations) / 1000.0)), "batch_average_sample_cost_ms": float(np.mean(durations) / batch_size), "test_size": test_size, "request_sequence_reused": True, "contamination_status": contamination})
     post_gpu = process_snapshot(args.device)
     model_bytes = sizes(record, cache_path)
     parameters = {"parameter_count": "N/A", "trainable_parameter_count": "N/A"}
     if is_dnn:
         parameters = {"parameter_count": sum(item.numel() for item in model.model.parameters()), "trainable_parameter_count": sum(item.numel() for item in model.model.parameters() if item.requires_grad)}
-    protocol = {"version": 1, "measurement_identity": identity, "scope": "model_only", "device": device, "threads_requested": args.threads, "torch_threads_effective": torch.get_num_threads(), "batch_sizes": args.batch_sizes, "warmup": args.warmup, "rounds": args.rounds, "requests_per_round": args.requests, "input": "saved transformed test features -> dtype/device conversion -> model -> target inverse transform -> CPU readable prediction", "excluded": "disk IO, checkpoint loading, model construction, metric calculation, output writes", "pre_gpu_processes": pre_gpu, "post_gpu_processes": post_gpu, "tf32": bool(torch.backends.cuda.matmul.allow_tf32) if args.device == "cuda" else None, "artifact_fingerprint": record["artifact_fingerprint"], "cache_path": str(cache_path.resolve()), "environment": runtime_environment(torch, args.device)}
+    protocol = {"version": 2, "measurement_identity": identity, "scope": "model_only", "device": device, "threads_requested": args.threads, "torch_threads_effective": torch.get_num_threads(), "batch_sizes": args.batch_sizes, "warmup": args.warmup, "rounds": args.rounds, "requests_per_round": args.requests, "input": "saved transformed test features -> dtype/device conversion -> model -> target inverse transform -> CPU readable prediction", "excluded": "disk IO, checkpoint loading, model construction, metric calculation, output writes", "pre_gpu_processes": pre_gpu, "post_gpu_processes": post_gpu, "tf32": bool(torch.backends.cuda.matmul.allow_tf32) if args.device == "cuda" else None, "artifact_fingerprint": record["artifact_fingerprint"], "cache_path": str(cache_path.resolve()), "environment": runtime_environment(torch, args.device)}
     write_csv(output / "raw_request_times.csv", raw_rows, ["model", "dataset", "seed", "device", "scope", "batch_size", "timing_round", "request", "latency_ms", "request_positions"])
     summaries = [{**row, **model_bytes, **parameters, "prediction_max_abs_diff": max_abs, "protocol_fingerprint": fingerprint(protocol)} for row in summaries]
     fields = sorted({key for row in summaries for key in row})
