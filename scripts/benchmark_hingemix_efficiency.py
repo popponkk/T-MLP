@@ -91,7 +91,19 @@ def restore_model(record: dict[str, str], dataset, device: str):
     import torch
     from utils.model_utils import make_baseline
     config_doc = read_yaml(Path(record["config_path"])) or {}
-    model_config = config_doc.get("model") if isinstance(config_doc.get("model"), dict) else config_doc
+    saved_model = config_doc.get("model") if isinstance(config_doc.get("model"), dict) else config_doc
+    if record["model"] == "hingemix":
+        # ``configs.yaml`` is post-construction metadata for the v2 ablation
+        # class.  Its outer keys describe the selected ablation and must not be
+        # forwarded as constructor kwargs; the original constructor input is
+        # retained under requested_model_config.
+        requested = saved_model.get("requested_model_config") if isinstance(saved_model, dict) else None
+        if not isinstance(requested, dict):
+            raise RuntimeError("HingeMix saved config has no requested_model_config for faithful restoration")
+        model_config = dict(requested)
+        model_config["ablation"] = saved_model.get("ablation", "full")
+    else:
+        model_config = saved_model
     if not isinstance(model_config, dict):
         raise RuntimeError("Saved model configuration has no model mapping")
     category_sizes = dataset.get_category_sizes("train")
