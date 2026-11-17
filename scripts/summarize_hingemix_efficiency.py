@@ -35,6 +35,23 @@ def number(row: dict[str, str], name: str) -> float | None:
         return None
 
 
+METRICS = (
+    "latency_p50_ms",
+    "latency_p95_ms",
+    "mean_request_latency_ms",
+    "throughput_samples_per_second",
+    "batch_average_sample_cost_ms",
+)
+EXPECTED_HINGEMIX_SEEDS = {"0", "1", "2", "3", "4"}
+
+
+def add_metric_statistics(item: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    for metric in METRICS:
+        values = [value for row in rows if (value := number(row, f"{metric}_mean" if f"{metric}_mean" in row else metric)) is not None]
+        item[f"{metric}_mean"] = float(np.mean(values)) if values else ""
+        item[f"{metric}_sample_std"] = float(np.std(values, ddof=1)) if len(values) > 1 else ""
+
+
 def main() -> None:
     args = parse_args()
     input_root, output_root = Path(args.input_root).resolve(), Path(args.output_root).resolve()
@@ -82,17 +99,46 @@ def main() -> None:
         item = dict(zip(keys, group))
         item["n_measurements"] = len(rows)
         item["status"] = "measured"
-        for metric in ("latency_p50_ms", "latency_p95_ms", "mean_request_latency_ms", "throughput_samples_per_second", "batch_average_sample_cost_ms"):
-            values = [value for row in rows if (value := number(row, metric)) is not None]
-            item[f"{metric}_mean"] = float(np.mean(values)) if values else ""
-            item[f"{metric}_sample_std"] = float(np.std(values, ddof=1)) if len(values) > 1 else ""
+        add_metric_statistics(item, rows)
         summaries.append(item)
     fields = sorted({key for row in summaries for key in row}) or list(keys) + ["status"]
     write_csv(destination / "summary.csv", summaries, fields)
+
+    # A timing round is not a training repetition.  Aggregate the already
+    # round-aggregated rows across independent training seeds in a separate
+    # view, deliberately excluding artifact/protocol fingerprints which differ
+    # between checkpoint seeds.
+    seed_keys = (
+        "model", "dataset", "device", "scope", "batch_size", "warmup",
+        "rounds", "requests_per_round", "contamination_status",
+    )
+    seed_groups: dict[tuple[str, ...], list[dict[str, Any]]] = defaultdict(list)
+    for row in summaries:
+        seed_groups[tuple(str(row.get(key, "")) for key in seed_keys)].append(row)
+    across_seed: list[dict[str, Any]] = []
+    for group, rows in sorted(seed_groups.items()):
+        item = dict(zip(seed_keys, group))
+        observed = [str(row.get("seed", "")) for row in rows]
+        unique = set(observed)
+        item["training_seeds"] = ",".join(sorted(unique, key=lambda seed: (not seed.isdigit(), seed)))
+        item["n_training_seeds"] = len(unique)
+        item["n_seed_rows"] = len(rows)
+        if len(rows) != len(unique):
+            item["status"] = "duplicate_seed_measurements"
+        elif unique == EXPECTED_HINGEMIX_SEEDS:
+            item["status"] = "complete"
+        else:
+            item["status"] = "incomplete"
+        add_metric_statistics(item, rows)
+        across_seed.append(item)
+    across_fields = sorted({key for row in across_seed for key in row}) or list(seed_keys) + ["status"]
+    write_csv(destination / "across_training_seeds.csv", across_seed, across_fields)
     write_json(destination / "integrity.json", {
         "input_root": str(input_root), "measurement_rows": len(measurements),
         "measured_rows": sum(row.get("status") == "measured" for row in measurements),
-        "groups": len(summaries), "formal_only": args.formal_only,
+        "groups": len(summaries), "across_training_seed_groups": len(across_seed),
+        "complete_five_seed_groups": sum(row["status"] == "complete" for row in across_seed),
+        "formal_only": args.formal_only,
         "skipped_legacy_or_invalid_measurements": skipped_legacy,
         "skipped_nonformal_measurements": skipped_nonformal,
         "rule": "Only rows with identical model, dataset, training seed, device, scope, batch size, protocol fingerprint, and contamination status are aggregated.",
@@ -102,7 +148,10 @@ def main() -> None:
         f"- Input root: `{input_root}`\n"
         f"- Measurement rows: {len(measurements)}\n"
         f"- Compatible summary groups: {len(summaries)}\n"
+        f"- Across-training-seed groups: {len(across_seed)}\n"
+        f"- Complete HingeMix five-seed groups: {sum(row['status'] == 'complete' for row in across_seed)}\n"
         "- This is a timing-round aggregation, not an aggregation of training seeds.\n"
+        "- `across_training_seeds.csv` separately summarizes independent training seeds; only exactly seeds 0,1,2,3,4 are marked `complete`.\n"
         "- `model_only` and end-to-end measurements are intentionally never mixed.\n",
         encoding="utf-8",
     )
