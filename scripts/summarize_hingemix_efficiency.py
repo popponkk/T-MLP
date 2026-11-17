@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -37,9 +38,18 @@ def main() -> None:
     args = parse_args()
     input_root, output_root = Path(args.input_root).resolve(), Path(args.output_root).resolve()
     measurements: list[dict[str, str]] = []
+    skipped_legacy: list[str] = []
     # ``tasks`` is the resumable layout. ``benchmark_*`` preserves compatibility
     # with short measurements made by the initial development version.
     for path in sorted(list(input_root.glob("tasks/*/summary.csv")) + list(input_root.glob("benchmark_*/summary.csv"))):
+        try:
+            protocol = json.loads((path.parent / "protocol.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            skipped_legacy.append(f"{path.parent}: missing or invalid protocol.json")
+            continue
+        if protocol.get("version") != 2:
+            skipped_legacy.append(f"{path.parent}: protocol version {protocol.get('version')!r} is not accepted")
+            continue
         for row in read_rows(path):
             row["measurement_path"] = str(path.parent)
             measurements.append(row)
@@ -68,7 +78,7 @@ def main() -> None:
     write_json(destination / "integrity.json", {
         "input_root": str(input_root), "measurement_rows": len(measurements),
         "measured_rows": sum(row.get("status") == "measured" for row in measurements),
-        "groups": len(summaries),
+        "groups": len(summaries), "skipped_legacy_or_invalid_measurements": skipped_legacy,
         "rule": "Only rows with identical model, dataset, training seed, device, scope, batch size, protocol fingerprint, and contamination status are aggregated.",
     })
     (destination / "report.md").write_text(
