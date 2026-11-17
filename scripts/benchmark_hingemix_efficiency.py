@@ -68,7 +68,7 @@ def pick_record(args: argparse.Namespace) -> dict[str, str]:
     return candidates[0]
 
 
-def load_cached_dataset(record: dict[str, str]):
+def load_cached_datasets(record: dict[str, str]):
     from utils.data_utils import load_pickle
     data_config = Path(record["preprocess_config_path"])
     document = read_yaml(data_config) or {}
@@ -82,9 +82,9 @@ def load_cached_dataset(record: dict[str, str]):
             continue
         if isinstance(expected, dict) and vars(transformation) == expected:
             matches.append((path, dataset))
-    if len(matches) != 1:
-        raise RuntimeError(f"Expected one cache matching data_config transformation; found {len(matches)}")
-    return matches[0]
+    if not matches:
+        raise RuntimeError("No cache matches the saved data_config transformation")
+    return matches
 
 
 def restore_model(record: dict[str, str], dataset, device: str):
@@ -142,6 +142,37 @@ def prediction_fn(model, x_num, x_cat, device: str, y_info: dict[str, Any]):
             features = cat if num is None else num if cat is None else np.concatenate([num, cat], axis=1)
             return np.asarray(model.model.predict(features)).reshape(-1) * y_std + y_mean
     return run, is_dnn
+
+
+def restore_verified_candidate(record: dict[str, str], candidates, device: str):
+    """Select only the cache whose restored final prediction matches history.
+
+    Some datasets retain multiple cache files with an identical transformation
+    specification after their source arrays were regenerated.  File names and
+    modification times are not provenance.  The saved final prediction is the
+    only reliable discriminator available without re-fitting preprocessing.
+    """
+    saved = np.load(Path(record["saved_predictions_path"])).reshape(-1)
+    verified = []
+    rejected = []
+    for cache_path, dataset in candidates:
+        try:
+            model = restore_model(record, dataset, device)
+            x_num, x_cat = input_arrays(dataset)
+            run, is_dnn = prediction_fn(model, x_num, x_cat, device, dataset.y_info)
+            restored = run(x_num, x_cat)
+            saved_raw = saved * float(dataset.y_info.get("std", 1.0)) + float(dataset.y_info.get("mean", 0.0))
+            max_abs = float(np.max(np.abs(restored - saved_raw))) if len(saved_raw) else 0.0
+            if len(restored) == len(saved_raw) and np.allclose(restored, saved_raw, rtol=1e-5, atol=1e-6):
+                verified.append((cache_path, dataset, model, run, is_dnn, max_abs))
+            else:
+                rejected.append(f"{cache_path}: prediction mismatch max_abs_diff={max_abs}")
+        except Exception as error:
+            rejected.append(f"{cache_path}: {type(error).__name__}: {error}")
+    if len(verified) != 1:
+        detail = "; ".join(rejected) or "multiple candidates reproduced the saved prediction"
+        raise RuntimeError(f"Expected exactly one cache verified against saved predictions; found {len(verified)}. {detail}")
+    return verified[0]
 
 
 def synchronize(device: str) -> None:
@@ -207,10 +238,15 @@ def main() -> None:
         device = f"cuda:{args.gpu}"
     else:
         device = "cpu"
-    cache_path, dataset = load_cached_dataset(record)
+    candidates = load_cached_datasets(record)
+    cache_identity = (
+        {"cache_sha256": sha256_file(candidates[0][0])}
+        if len(candidates) == 1
+        else {"cache_candidate_sha256": sorted(sha256_file(path) for path, _ in candidates)}
+    )
     identity = {
         "version": 2, "artifact_fingerprint": record["artifact_fingerprint"],
-        "cache_sha256": sha256_file(cache_path), "model": record["model"],
+        **cache_identity, "model": record["model"],
         "dataset": record["dataset"], "seed": record["seed"], "device": args.device,
         "gpu": args.gpu if args.device == "cuda" else None, "scope": "model_only",
         "threads": args.threads, "batch_sizes": args.batch_sizes, "warmup": args.warmup,
@@ -230,7 +266,7 @@ def main() -> None:
             print(f"already complete with matching identity: {output}")
             return
         raise SystemExit(f"measurement output already exists and is not resumable with this identity: {output}")
-    model = restore_model(record, dataset, device)
+    cache_path, dataset, model, run, is_dnn, max_abs = restore_verified_candidate(record, candidates, device)
     if not isinstance(getattr(model, "model", None), torch.nn.Module) and hasattr(model.model, "set_params"):
         try:
             model.model.set_params(n_jobs=args.threads)
@@ -239,15 +275,6 @@ def main() -> None:
     x_num, x_cat = input_arrays(dataset)
     test_size = len(x_num) if x_num is not None else len(x_cat)
     saved_path = Path(record["saved_predictions_path"])
-    run, is_dnn = prediction_fn(model, x_num, x_cat, device, dataset.y_info)
-    # Consistency uses the same full test order but is not part of timing.
-    restored = run(x_num, x_cat)
-    saved = np.load(saved_path).reshape(-1)
-    # Saved project predictions are standardized; transform them only for comparison.
-    saved_raw = saved * float(dataset.y_info.get("std", 1.0)) + float(dataset.y_info.get("mean", 0.0))
-    max_abs = float(np.max(np.abs(restored - saved_raw))) if len(saved_raw) else 0.0
-    if len(restored) != len(saved_raw) or not np.allclose(restored, saved_raw, rtol=1e-5, atol=1e-6):
-        raise SystemExit(f"prediction_mismatch: restored output differs from saved prediction; max_abs_diff={max_abs}")
     pre_gpu, raw_rows, summaries = process_snapshot(args.device), [], []
     contamination = "potentially_contaminated" if args.device == "cuda" and pre_gpu not in {"", "not_applicable", "unavailable"} else "not_detected"
     for batch_size in args.batch_sizes:
