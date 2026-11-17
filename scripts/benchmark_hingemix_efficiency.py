@@ -22,6 +22,10 @@ from typing import Any
 
 import numpy as np
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+# Running ``python scripts/...`` otherwise exposes only ``scripts/`` and not
+# project packages such as ``utils`` and ``models``.
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from hingemix_efficiency_common import (  # noqa: E402
     MODELS, cache_candidates, fingerprint, read_yaml, sha256_file, write_csv, write_json,
