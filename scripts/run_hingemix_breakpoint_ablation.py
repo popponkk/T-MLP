@@ -268,11 +268,48 @@ def command(task: dict[str, Any], config: Path, attempt: Path, cache: Path, devi
         "--d_token", "1024", "--n_layers", "1", "--config", str(config),
         "--output_dir", str(attempt), "--preprocess-cache-dir", str(cache),
         "--hide-test-during-training",
-        "--save-test-trace",
     ]
     if device == "cuda":
         command.extend(["--gpu", str(gpu)])
     return command
+
+
+def save_test_trace(task: dict[str, Any]) -> None:
+    """Persist test predictions with source-split targets without changing model inputs.
+
+    The prediction array is retained in the model's saved output scale.  The
+    source target is retained in the saved split's source scale; data_config
+    records the fitted label transformation used by the training process.
+    """
+    attempt = Path(task["attempt_dir"])
+    directory = Path(task["dataset_evidence"]["dataset_dir"])
+    prediction_path = attempt / "test_predictions.npy"
+    target_path = directory / "y_test.npy"
+    if not prediction_path.is_file() or not target_path.is_file():
+        raise RuntimeError("test prediction or source test target file is missing")
+    predictions = np.load(prediction_path)
+    targets = np.load(target_path)
+    if len(predictions) != len(targets):
+        raise RuntimeError("saved prediction length does not match source test target length")
+    source_indices = directory / "idx_test.npy"
+    if source_indices.is_file():
+        sample_id = np.load(source_indices)
+        sample_id_source = str(source_indices.resolve())
+    else:
+        sample_id = np.arange(len(targets), dtype=np.int64)
+        sample_id_source = "generated_test_split_position"
+    if len(sample_id) != len(targets):
+        raise RuntimeError("source test index length does not match source test target length")
+    np.savez(
+        attempt / "test_prediction_trace.npz",
+        y_pred_model_output_scale=predictions,
+        y_true_saved_test_split_scale=targets,
+        sample_id=sample_id,
+        prediction_source=np.asarray(str(prediction_path.resolve())),
+        target_source=np.asarray(str(target_path.resolve())),
+        sample_id_source=np.asarray(sample_id_source),
+        data_config_source=np.asarray(str((attempt / "data_config.yaml").resolve())),
+    )
 
 
 def save_diagnostics(task: dict[str, Any]) -> None:
@@ -416,6 +453,7 @@ def main() -> None:
             task.update(finished_at=time.time(), return_code=code)
             try:
                 if code == 0:
+                    save_test_trace(task)
                     save_diagnostics(task)
                     result = collect_result(task)
                 else:

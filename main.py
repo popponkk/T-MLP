@@ -49,11 +49,6 @@ parser.add_argument(
     action='store_true',
     help='Use validation only during fitting; still evaluate test after loading best checkpoint.',
 )
-parser.add_argument(
-    '--save-test-trace',
-    action='store_true',
-    help='Save paired final-test predictions, targets, and split-relative sample IDs.',
-)
 args = parser.parse_args()
 
 FORMAL_MODELS = {'hingemix', 'hingemix_ablation', 'hingemix_ablation_v2', 'hingemix_token_mlp'}
@@ -144,7 +139,7 @@ print('preparing dataset: ', args.dataset)
 append_ids = (
     args.feat_gate == 'xgb_dropout'
     and args.model == 'tmlp'
-) or args.save_test_trace
+)
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
     seed=args.seed if args.data_seed is None else args.data_seed,
@@ -305,18 +300,6 @@ predictions, results = call_with_supported_kwargs(
 )
 model.save_prediction(output_dir, results)
 model.save_predictions_array(output_dir, predictions, file='test_predictions')
-if args.save_test_trace:
-    test_targets = datas['test'][2].detach().cpu().numpy()
-    test_ids = datas['test'][3].detach().cpu().numpy()
-    np.savez(
-        Path(output_dir) / 'test_prediction_trace.npz',
-        y_pred_model_scale=np.asarray(predictions),
-        y_true_model_scale=test_targets,
-        sample_id=test_ids,
-        y_std=np.asarray(y_std if y_std is not None else np.nan),
-        metric_scale=np.asarray('original_target_scale_for_rmse_mae'),
-        stored_value_scale=np.asarray('model_target_scale'),
-    )
 
 print("=== Prediction (best metric) ===")
 print(results)
