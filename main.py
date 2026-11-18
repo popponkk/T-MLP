@@ -3,6 +3,8 @@ import random
 import argparse
 import inspect
 import sys
+import json
+from pathlib import Path
 import numpy as np
 
 import torch
@@ -41,6 +43,16 @@ parser.add_argument(
     type=str,
     default=None,
     help='Optional isolated cache directory for preprocessing artifacts.',
+)
+parser.add_argument(
+    '--hide-test-during-training',
+    action='store_true',
+    help='Use validation only during fitting; still evaluate test after loading best checkpoint.',
+)
+parser.add_argument(
+    '--save-test-trace',
+    action='store_true',
+    help='Save paired final-test predictions, targets, and split-relative sample IDs.',
 )
 args = parser.parse_args()
 
@@ -132,7 +144,7 @@ print('preparing dataset: ', args.dataset)
 append_ids = (
     args.feat_gate == 'xgb_dropout'
     and args.model == 'tmlp'
-)
+) or args.save_test_trace
 dataset = DataProcessor.load_preproc_default(
     output_dir, args.model, args.dataset, 
     seed=args.seed if args.data_seed is None else args.data_seed,
@@ -259,12 +271,29 @@ call_with_supported_kwargs(
     model.fit,
     X_num=datas['train'][0], X_cat=datas['train'][1], ys=datas['train'][2], ids=datas['train'][3],
     y_std=y_std,
-    eval_set=(datas['val'], datas['test']), # add test set to report metrics each best epoch
+    # The optional experiment mode prevents test metrics from being emitted while
+    # validation remains the sole checkpoint and early-stopping criterion.
+    eval_set=(datas['val'],) if args.hide_test_during_training else (datas['val'], datas['test']),
     patience=patience, task=dataset.task_type.value,
     training_args=configs['training'],
     meta_args=configs['meta'],
 )
 model.load_best_dnn(output_dir)
+
+# Explicit breakpoint-comparison runs retain both construction diagnostics and
+# the learnable breakpoint values restored from the validation-selected model.
+if getattr(model, 'breakpoint_diagnostics', None) is not None:
+    tokenizer = getattr(getattr(model, 'model', None), 'tokenizer', None)
+    if tokenizer is not None and hasattr(tokenizer, 'breakpoints'):
+        final_breakpoints = tokenizer.breakpoints().detach().cpu().numpy().astype(float).tolist()
+        (Path(output_dir) / 'breakpoint_final.json').write_text(
+            json.dumps({
+                'checkpoint': 'best.bin',
+                'final_breakpoints_after_best_checkpoint': final_breakpoints,
+                'final_unique_breakpoint_counts': [len(set(row)) for row in final_breakpoints],
+            }, indent=2),
+            encoding='utf-8',
+        )
 
 # prediction
 predictions, results = call_with_supported_kwargs(
@@ -276,6 +305,18 @@ predictions, results = call_with_supported_kwargs(
 )
 model.save_prediction(output_dir, results)
 model.save_predictions_array(output_dir, predictions, file='test_predictions')
+if args.save_test_trace:
+    test_targets = datas['test'][2].detach().cpu().numpy()
+    test_ids = datas['test'][3].detach().cpu().numpy()
+    np.savez(
+        Path(output_dir) / 'test_prediction_trace.npz',
+        y_pred_model_scale=np.asarray(predictions),
+        y_true_model_scale=test_targets,
+        sample_id=test_ids,
+        y_std=np.asarray(y_std if y_std is not None else np.nan),
+        metric_scale=np.asarray('original_target_scale_for_rmse_mae'),
+        stored_value_scale=np.asarray('model_target_scale'),
+    )
 
 print("=== Prediction (best metric) ===")
 print(results)

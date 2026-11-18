@@ -1,5 +1,6 @@
 # %%
 import json
+import hashlib
 import math
 import time
 import typing as ty
@@ -273,7 +274,12 @@ class GGPLTMLP(TabModel):
         self.breakpoint_cache_dir = self.saved_model_config.get(
             "breakpoint_cache_dir", "artifacts/ggpl_tmlp_breakpoints"
         )
+        # None preserves the historical breakpoint_init behaviour exactly.  The
+        # explicit strategy is reserved for isolated comparison experiments.
+        self.breakpoint_strategy = self.saved_model_config.get("breakpoint_strategy")
+        self.breakpoint_cache_key = self.saved_model_config.get("breakpoint_cache_key")
         self.num_breakpoints = int(self.saved_model_config.get("num_breakpoints", 8))
+        self.breakpoint_diagnostics: dict[str, ty.Any] | None = None
 
     def preproc_config(self, model_config: dict):
         self.saved_model_config = model_config.copy()
@@ -282,6 +288,8 @@ class GGPLTMLP(TabModel):
         model_config.pop("breakpoint_init", None)
         model_config.pop("breakpoint_fallback", None)
         model_config.pop("breakpoint_cache_dir", None)
+        model_config.pop("breakpoint_strategy", None)
+        model_config.pop("breakpoint_cache_key", None)
         model_config.setdefault("n_layers", 1)
         model_config.setdefault("d_token", 1024)
         model_config.setdefault("token_bias", True)
@@ -305,6 +313,60 @@ class GGPLTMLP(TabModel):
         return np.stack([mins + q * (maxs - mins) for q in qs], axis=1).astype(
             "float32"
         )
+
+    @staticmethod
+    def _comparison_quantile_breakpoints(
+        x_np: np.ndarray, num_breakpoints: int
+    ) -> np.ndarray:
+        """Quantiles required by the breakpoint-construction comparison."""
+        qs = np.arange(1, num_breakpoints + 1, dtype="float64") / (
+            num_breakpoints + 1
+        )
+        try:
+            values = np.quantile(x_np, qs, axis=0, method="linear")
+        except TypeError:  # NumPy < 1.22
+            values = np.quantile(x_np, qs, axis=0, interpolation="linear")
+        return values.T.astype("float32")
+
+    @staticmethod
+    def _comparison_uniform_breakpoints(
+        x_np: np.ndarray, num_breakpoints: int
+    ) -> np.ndarray:
+        mins = np.min(x_np, axis=0)
+        maxs = np.max(x_np, axis=0)
+        qs = np.arange(1, num_breakpoints + 1, dtype="float32") / (
+            num_breakpoints + 1
+        )
+        return (mins[:, None] + qs[None, :] * (maxs - mins)[:, None]).astype(
+            "float32"
+        )
+
+    @staticmethod
+    def _array_sha256(*arrays: np.ndarray) -> str:
+        digest = hashlib.sha256()
+        for array in arrays:
+            contiguous = np.ascontiguousarray(array)
+            digest.update(str(contiguous.shape).encode("ascii"))
+            digest.update(str(contiguous.dtype).encode("ascii"))
+            digest.update(contiguous.tobytes())
+        return digest.hexdigest()
+
+    def _non_breakpoint_state_sha256(self) -> str:
+        """Hash initialization while deliberately excluding breakpoint state."""
+        digest = hashlib.sha256()
+        for name, value in sorted(self.model.state_dict().items()):
+            if name in {
+                "tokenizer.breakpoint_min",
+                "tokenizer.breakpoint_delta_raw",
+            }:
+                continue
+            digest.update(name.encode("utf-8"))
+            digest.update(np.ascontiguousarray(value.detach().cpu().numpy()).tobytes())
+        return digest.hexdigest()
+
+    @staticmethod
+    def _torch_rng_sha256() -> str:
+        return hashlib.sha256(torch.random.get_rng_state().cpu().numpy().tobytes()).hexdigest()
 
     def _cache_file(self, save_path: str, n_features: int) -> Path:
         dataset_name = Path(save_path).name
@@ -344,65 +406,151 @@ class GGPLTMLP(TabModel):
         if x_num is None or x_num.shape[1] == 0:
             return
         cache_file = self._cache_file(save_path, x_num.shape[1])
+        explicit_strategy = self.breakpoint_strategy
+        if explicit_strategy not in {None, "gbdt", "quantile", "uniform"}:
+            raise ValueError(f"Unsupported breakpoint_strategy: {explicit_strategy}")
+        x_np = x_num.detach().cpu().numpy()
+        y_np = ys.detach().cpu().numpy()
+        if explicit_strategy is not None and (
+            not np.isfinite(x_np).all() or not np.isfinite(y_np).all()
+        ):
+            raise ValueError(
+                "Breakpoint comparison requires finite train-only transformed features and labels"
+            )
+        cache_identity = None
+        if explicit_strategy is not None:
+            cache_identity = {
+                "schema_version": 2,
+                "breakpoint_strategy": explicit_strategy,
+                "breakpoint_cache_key": self.breakpoint_cache_key,
+                "train_data_sha256": self._array_sha256(x_np, y_np),
+                "num_breakpoints": self.num_breakpoints,
+            }
         if cache_file.exists():
             with cache_file.open("r", encoding="utf-8") as f:
                 payload = json.load(f)
+            if explicit_strategy is not None:
+                if payload.get("cache_identity") != cache_identity:
+                    raise RuntimeError(
+                        f"Refusing breakpoint-cache reuse with different strategy/data/config: {cache_file}"
+                    )
             breakpoints = torch.tensor(
                 payload["breakpoints"], dtype=torch.float32, device=self.device
             )
             self.model.tokenizer.set_breakpoints(breakpoints)
+            self.breakpoint_diagnostics = payload.get("diagnostics") if explicit_strategy is not None else None
             print(f"[ggpl_tmlp] loaded breakpoints: {cache_file}")
             return
 
-        x_np = x_num.detach().cpu().numpy()
-        y_np = ys.detach().cpu().numpy()
+        started = time.perf_counter()
         fallback = (
             self._quantile_breakpoints(x_np, self.num_breakpoints)
             if self.breakpoint_fallback == "quantile"
             else self._even_breakpoints(x_np, self.num_breakpoints)
         )
-        breakpoints = fallback.copy()
+        gbdt_info: dict[str, ty.Any] = {
+            "called": False,
+            "raw_candidate_threshold_counts": [0] * x_np.shape[1],
+            "candidate_threshold_counts": [0] * x_np.shape[1],
+            "selected_gbdt_only_counts": [0] * x_np.shape[1],
+            "selected_fallback_only_counts": [0] * x_np.shape[1],
+            "selected_shared_counts": [0] * x_np.shape[1],
+            "supplement_rule": None,
+        }
+        if explicit_strategy == "quantile":
+            breakpoints = self._comparison_quantile_breakpoints(x_np, self.num_breakpoints)
+        elif explicit_strategy == "uniform":
+            breakpoints = self._comparison_uniform_breakpoints(x_np, self.num_breakpoints)
+        else:
+            # This branch intentionally retains the formal GBDT construction,
+            # including its 0.1..0.9 fallback quantiles and index selection.
+            breakpoints = fallback.copy()
 
-        if self.breakpoint_init == "gbdt":
-            thresholds = self._extract_gbdt_thresholds(x_np, y_np)
-            for feature_idx, values in enumerate(thresholds):
-                unique = np.array(sorted(set(values)), dtype="float32")
-                if len(unique) >= self.num_breakpoints:
-                    pick = (
-                        np.linspace(0, len(unique) - 1, self.num_breakpoints)
-                        .round()
-                        .astype(int)
-                    )
-                    breakpoints[feature_idx] = unique[pick]
-                elif len(unique) > 0:
-                    merged = np.array(
-                        sorted(set(unique.tolist() + fallback[feature_idx].tolist())),
-                        dtype="float32",
-                    )
-                    pick = (
-                        np.linspace(0, len(merged) - 1, self.num_breakpoints)
-                        .round()
-                        .astype(int)
-                    )
-                    breakpoints[feature_idx] = merged[pick]
-        elif self.breakpoint_init not in ["quantile", "even"]:
-            raise ValueError(f"Unsupported breakpoint_init: {self.breakpoint_init}")
+            if self.breakpoint_init == "gbdt":
+                gbdt_info["called"] = True
+                gbdt_info["supplement_rule"] = "formal_fallback_then_unique_sorted_merge_then_even_index_selection"
+                thresholds = self._extract_gbdt_thresholds(x_np, y_np)
+                for feature_idx, values in enumerate(thresholds):
+                    unique = np.array(sorted(set(values)), dtype="float32")
+                    gbdt_info["raw_candidate_threshold_counts"][feature_idx] = int(len(values))
+                    gbdt_info["candidate_threshold_counts"][feature_idx] = int(len(unique))
+                    if len(unique) >= self.num_breakpoints:
+                        pick = (
+                            np.linspace(0, len(unique) - 1, self.num_breakpoints)
+                            .round()
+                            .astype(int)
+                        )
+                        breakpoints[feature_idx] = unique[pick]
+                        gbdt_info["selected_gbdt_only_counts"][feature_idx] = self.num_breakpoints
+                    elif len(unique) > 0:
+                        merged = np.array(
+                            sorted(set(unique.tolist() + fallback[feature_idx].tolist())),
+                            dtype="float32",
+                        )
+                        pick = (
+                            np.linspace(0, len(merged) - 1, self.num_breakpoints)
+                            .round()
+                            .astype(int)
+                        )
+                        selected = merged[pick]
+                        breakpoints[feature_idx] = selected
+                        unique_set, fallback_set = set(unique.tolist()), set(fallback[feature_idx].tolist())
+                        for value in selected.tolist():
+                            in_gbdt, in_fallback = value in unique_set, value in fallback_set
+                            if in_gbdt and in_fallback:
+                                gbdt_info["selected_shared_counts"][feature_idx] += 1
+                            elif in_gbdt:
+                                gbdt_info["selected_gbdt_only_counts"][feature_idx] += 1
+                            else:
+                                gbdt_info["selected_fallback_only_counts"][feature_idx] += 1
+                    else:
+                        # No split threshold: the unchanged formal fallback
+                        # supplies all K slots for this feature.
+                        gbdt_info["selected_fallback_only_counts"][feature_idx] = self.num_breakpoints
+            elif self.breakpoint_init not in ["quantile", "even"]:
+                raise ValueError(f"Unsupported breakpoint_init: {self.breakpoint_init}")
 
         cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with cache_file.open("w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "breakpoint_init": self.breakpoint_init,
-                    "breakpoint_fallback": self.breakpoint_fallback,
-                    "num_breakpoints": self.num_breakpoints,
-                    "breakpoints": breakpoints.tolist(),
-                },
-                f,
-                indent=2,
-            )
+        diagnostics = None
+        if explicit_strategy is not None:
+            requested_unique = [int(len(np.unique(row))) for row in breakpoints]
+            diagnostics = {
+                "strategy": explicit_strategy,
+                "strategy_mode": "explicit_comparison",
+                "num_breakpoint_slots": self.num_breakpoints,
+                "learnable_breakpoints": bool(self.model.tokenizer.learnable_breakpoints),
+                "quantile_method": "linear" if explicit_strategy == "quantile" else None,
+                "feature_min": np.min(x_np, axis=0).astype(float).tolist(),
+                "feature_max": np.max(x_np, axis=0).astype(float).tolist(),
+                "constant_feature_indices": np.flatnonzero(np.min(x_np, axis=0) == np.max(x_np, axis=0)).astype(int).tolist(),
+                "nonfinite_feature_value_count": int(np.size(x_np) - np.isfinite(x_np).sum()),
+                "requested_breakpoints": breakpoints.astype(float).tolist(),
+                "requested_unique_breakpoint_counts": requested_unique,
+                "gbdt": gbdt_info,
+                "non_breakpoint_state_sha256": self._non_breakpoint_state_sha256(),
+                "torch_rng_sha256_before_dataloader": self._torch_rng_sha256(),
+                "generation_seconds": time.perf_counter() - started,
+            }
         self.model.tokenizer.set_breakpoints(
             torch.tensor(breakpoints, dtype=torch.float32, device=self.device)
         )
+        if diagnostics is not None:
+            effective = self.model.tokenizer.breakpoints().detach().cpu().numpy()
+            diagnostics["effective_breakpoints_after_tokenizer_constraints"] = effective.astype(float).tolist()
+            diagnostics["effective_unique_breakpoint_counts"] = [
+                int(len(np.unique(row))) for row in effective
+            ]
+        payload = {
+            "breakpoint_init": self.breakpoint_init,
+            "breakpoint_fallback": self.breakpoint_fallback,
+            "num_breakpoints": self.num_breakpoints,
+            "breakpoints": breakpoints.tolist(),
+        }
+        if explicit_strategy is not None:
+            payload.update({"cache_identity": cache_identity, "diagnostics": diagnostics})
+        with cache_file.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        self.breakpoint_diagnostics = diagnostics
         print(f"[ggpl_tmlp] saved breakpoints: {cache_file}")
 
     @staticmethod

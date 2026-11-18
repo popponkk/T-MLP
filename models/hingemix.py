@@ -177,7 +177,10 @@ class HingeMix(GGPLTMLP):
         self.breakpoint_cache_dir = self.saved_model_config.get(
             "breakpoint_cache_dir", "artifacts/ggpl_gtm_breakpoints"
         )
+        self.breakpoint_strategy = self.saved_model_config.get("breakpoint_strategy")
+        self.breakpoint_cache_key = self.saved_model_config.get("breakpoint_cache_key")
         self.num_breakpoints = int(self.saved_model_config.get("num_breakpoints", 8))
+        self.breakpoint_diagnostics = None
         self.n_parameters = sum(parameter.numel() for parameter in self.model.parameters())
         self.n_trainable_parameters = sum(
             parameter.numel() for parameter in self.model.parameters() if parameter.requires_grad
@@ -191,7 +194,8 @@ class HingeMix(GGPLTMLP):
         self.saved_model_config = model_config.copy()
         for key in (
             "model_name", "base_model", "breakpoint_init", "breakpoint_fallback",
-            "breakpoint_cache_dir", "ablation", "graph_dynamic_scale_init",
+            "breakpoint_cache_dir", "breakpoint_strategy", "breakpoint_cache_key",
+            "ablation", "graph_dynamic_scale_init",
             "graph_self_loop_init", "slimtok_rank_ratio", "slimtok_min_rank", "slimtok_rank",
         ):
             model_config.pop(key, None)
