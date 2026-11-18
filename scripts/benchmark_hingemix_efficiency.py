@@ -88,7 +88,23 @@ def load_cached_datasets(record: dict[str, str]):
     return matches
 
 
-def restore_model(record: dict[str, str], dataset, device: str):
+def configure_tree_threads(model, model_name: str, threads: int) -> str:
+    """Apply thread control without mutating a fitted CatBoost estimator."""
+    if model_name == "catboost":
+        # CatBoost rejects set_params after fit; its predict API has the
+        # supported per-call thread_count control instead.
+        return "catboost_predict(thread_count)"
+    estimator = getattr(model, "model", None)
+    if hasattr(estimator, "set_params"):
+        try:
+            estimator.set_params(n_jobs=threads)
+            return "estimator_set_params(n_jobs)"
+        except (TypeError, ValueError):
+            return "estimator_thread_control_unavailable"
+    return "not_applicable"
+
+
+def restore_model(record: dict[str, str], dataset, device: str, threads: int):
     import torch
     from utils.model_utils import make_baseline
     config_doc = read_yaml(Path(record["config_path"])) or {}
@@ -115,6 +131,7 @@ def restore_model(record: dict[str, str], dataset, device: str):
     model.load_best_dnn(record["attempt_path"])
     if hasattr(model, "model") and isinstance(model.model, torch.nn.Module):
         model.model.eval()
+    model._efficiency_tree_thread_control = configure_tree_threads(model, record["model"], threads)
     return model
 
 
@@ -126,7 +143,7 @@ def input_arrays(dataset):
     return x_num, x_cat
 
 
-def prediction_fn(model, x_num, x_cat, device: str, y_info: dict[str, Any]):
+def prediction_fn(model, x_num, x_cat, device: str, y_info: dict[str, Any], threads: int):
     import torch
     is_dnn = isinstance(getattr(model, "model", None), torch.nn.Module)
     y_mean, y_std = float(y_info.get("mean", 0.0)), float(y_info.get("std", 1.0))
@@ -141,7 +158,8 @@ def prediction_fn(model, x_num, x_cat, device: str, y_info: dict[str, Any]):
     else:
         def run(num, cat):
             features = cat if num is None else num if cat is None else np.concatenate([num, cat], axis=1)
-            return np.asarray(model.model.predict(features)).reshape(-1) * y_std + y_mean
+            kwargs = {"thread_count": threads} if getattr(model, "_efficiency_tree_thread_control", "") == "catboost_predict(thread_count)" else {}
+            return np.asarray(model.model.predict(features, **kwargs)).reshape(-1) * y_std + y_mean
     return run, is_dnn
 
 
@@ -166,7 +184,7 @@ def dataset_content_fingerprint(dataset) -> str:
     return digest.hexdigest()
 
 
-def restore_verified_candidate(record: dict[str, str], candidates, device: str):
+def restore_verified_candidate(record: dict[str, str], candidates, device: str, threads: int):
     """Select only the cache whose restored final prediction matches history.
 
     Some datasets retain multiple cache files with an identical transformation
@@ -179,9 +197,9 @@ def restore_verified_candidate(record: dict[str, str], candidates, device: str):
     rejected = []
     for cache_path, dataset in candidates:
         try:
-            model = restore_model(record, dataset, device)
+            model = restore_model(record, dataset, device, threads)
             x_num, x_cat = input_arrays(dataset)
-            run, is_dnn = prediction_fn(model, x_num, x_cat, device, dataset.y_info)
+            run, is_dnn = prediction_fn(model, x_num, x_cat, device, dataset.y_info, threads)
             restored = run(x_num, x_cat)
             saved_raw = saved * float(dataset.y_info.get("std", 1.0)) + float(dataset.y_info.get("mean", 0.0))
             max_abs = float(np.max(np.abs(restored - saved_raw))) if len(saved_raw) else 0.0
@@ -305,12 +323,7 @@ def main() -> None:
             print(f"already complete with matching identity: {output}")
             return
         raise SystemExit(f"measurement output already exists and is not resumable with this identity: {output}")
-    cache_path, dataset, model, run, is_dnn, max_abs = restore_verified_candidate(record, candidates, device)
-    if not isinstance(getattr(model, "model", None), torch.nn.Module) and hasattr(model.model, "set_params"):
-        try:
-            model.model.set_params(n_jobs=args.threads)
-        except (TypeError, ValueError):
-            pass
+    cache_path, dataset, model, run, is_dnn, max_abs = restore_verified_candidate(record, candidates, device, args.threads)
     x_num, x_cat = input_arrays(dataset)
     test_size = len(x_num) if x_num is not None else len(x_cat)
     saved_path = Path(record["saved_predictions_path"])
@@ -342,7 +355,7 @@ def main() -> None:
     parameters = {"parameter_count": "N/A", "trainable_parameter_count": "N/A"}
     if is_dnn:
         parameters = {"parameter_count": sum(item.numel() for item in model.model.parameters()), "trainable_parameter_count": sum(item.numel() for item in model.model.parameters() if item.requires_grad)}
-    protocol = {"version": 2, "measurement_identity": identity, "scope": "model_only", "device": device, "threads_requested": args.threads, "torch_threads_effective": torch.get_num_threads(), "batch_sizes": args.batch_sizes, "warmup": args.warmup, "rounds": args.rounds, "requests_per_round": args.requests, "input": "saved transformed test features -> dtype/device conversion -> model -> target inverse transform -> CPU readable prediction", "excluded": "disk IO, checkpoint loading, model construction, metric calculation, output writes", "pre_gpu_processes": pre_gpu, "post_gpu_processes": post_gpu, "tf32": bool(torch.backends.cuda.matmul.allow_tf32) if args.device == "cuda" else None, "artifact_fingerprint": record["artifact_fingerprint"], "cache_path": str(cache_path.resolve()), "environment": runtime_environment(torch, args.device)}
+    protocol = {"version": 2, "measurement_identity": identity, "scope": "model_only", "device": device, "threads_requested": args.threads, "torch_threads_effective": torch.get_num_threads(), "tree_thread_control": getattr(model, "_efficiency_tree_thread_control", "not_applicable"), "batch_sizes": args.batch_sizes, "warmup": args.warmup, "rounds": args.rounds, "requests_per_round": args.requests, "input": "saved transformed test features -> dtype/device conversion -> model -> target inverse transform -> CPU readable prediction", "excluded": "disk IO, checkpoint loading, model construction, metric calculation, output writes", "pre_gpu_processes": pre_gpu, "post_gpu_processes": post_gpu, "tf32": bool(torch.backends.cuda.matmul.allow_tf32) if args.device == "cuda" else None, "artifact_fingerprint": record["artifact_fingerprint"], "cache_path": str(cache_path.resolve()), "environment": runtime_environment(torch, args.device)}
     write_csv(output / "raw_request_times.csv", raw_rows, ["model", "dataset", "seed", "device", "scope", "batch_size", "timing_round", "request", "latency_ms", "request_positions"])
     summaries = [{**row, **model_bytes, **parameters, "prediction_max_abs_diff": max_abs, "protocol_fingerprint": fingerprint(protocol)} for row in summaries]
     fields = sorted({key for row in summaries for key in row})
